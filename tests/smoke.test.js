@@ -54,10 +54,51 @@ run('保存(saveData)とlocalStorage', () => {
   if(!s.props || s.props.length!==1) throw new Error('props保存なし');
   ['adminList','editorList','accounts'].forEach(k=>{ if(k in s) throw new Error(k+'が保存されている'); });
 });
+run('ボックス未編集なら TASKS は保存しない', () => {
+  w.saveData();
+  const s = JSON.parse(w.localStorage.getItem('housing_roadmap_v7'));
+  if('tasks' in s) throw new Error('未編集なのに tasks が保存されている');
+});
+run('ボックス編集が再読み込み後も残る', () => {
+  w.confirm = () => true;
+  // 編集：No.2 の名前とタスクを変更
+  w.openEditTaskDlg(2);
+  d.getElementById('teTaskName').value = '編集後の名前';
+  w.addCheckItem(); w.eval("tempItems[tempItems.length-1].t='追加したタスク'");
+  w.saveTaskEdit();
+  // 追加：新しいボックス
+  w.openAddTaskDlg();
+  const newNo = Number(d.getElementById('teTaskNo').value);
+  d.getElementById('teTaskName').value = '新規ボックス';
+  w.saveTaskEdit();
+  // 削除：No.3
+  w.deleteTask(3);
+  const before = w.eval('TASKS.length');
+  w.saveData();
+  const saved = w.localStorage.getItem('housing_roadmap_v7');
+  // 別ウィンドウで再読み込み
+  const d2 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
+  const T = d2.eval('TASKS');
+  if(T.length!==before) throw new Error('ボックス数 '+T.length+' ≠ '+before);
+  const t2 = T.find(t=>t.no===2);
+  if(!t2 || t2.name!=='編集後の名前') throw new Error('No.2 の名前が戻った');
+  if(!t2.items.some(i=>i.t==='追加したタスク')) throw new Error('追加したタスクが無い');
+  if(!T.find(t=>t.no===newNo && t.name==='新規ボックス')) throw new Error('追加したボックスが無い');
+  if(T.find(t=>t.no===3)) throw new Error('削除したボックスが戻った');
+  const pid = d2.eval('props[0].id');
+  if(d2.eval('pStates['+pid+'].done[2].length')!==t2.items.length) throw new Error('物件のチェック数がボックスと合わない');
+  // 再読み込み後に保存しても編集が残る
+  d2.saveData();
+  if(!('tasks' in JSON.parse(d2.localStorage.getItem('housing_roadmap_v7')))) throw new Error('再保存で tasks が消えた');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};
+  let json = null;
+  w.Blob = class { constructor(parts){ json = parts.join(''); } };
   w.exportAllData();
+  if(!json || !('tasks' in JSON.parse(json))) throw new Error('ボックス編集後のエクスポートに tasks が無い');
 });
 console.log('\nエラー数:', errors.length);
 errors.forEach(e=>console.log(' -', e));

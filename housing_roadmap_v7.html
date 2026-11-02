@@ -1674,6 +1674,7 @@ function exportAllData(){
       }])
     )
   };
+  if(tasksEdited) data.tasks = TASKS;
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1701,7 +1702,8 @@ function importAllData(input){
       if(!confirm(`「${file.name}」からデータを復元します。\n現在のデータはすべて上書きされます。\n\nエクスポート日時：${data.exportedAt||'不明'}\n物件数：${data.props?.length||0}件\n\nよろしいですか？`)){
         input.value=''; return;
       }
-      // 復元
+      // 復元（ボックスは pStates より先に戻す）
+      if(Array.isArray(data.tasks)){ TASKS.splice(0, TASKS.length, ...data.tasks); tasksEdited = true; }
       props.splice(0, props.length, ...(data.props||[]));
       if(data.nextPid) nextPid = data.nextPid;
       if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
@@ -1806,6 +1808,7 @@ function deleteProp(pid){
   scheduleSave();
 }
 
+let tasksEdited = false; // ボックス管理で編集したら true。true のときだけ TASKS を保存する（未編集ならテンプレートの更新がそのまま届く）
 let editingTaskNo = null; // 編集中のタスクNo（nullなら新規）
 let tempItems = []; // 編集中のチェック項目
 
@@ -1999,6 +2002,7 @@ function saveTaskEdit(){
       });
     }
   }
+  tasksEdited = true;
   closeOv('taskEditDlgOv');
   renderTaskEditList();
   scheduleSave();
@@ -2008,6 +2012,7 @@ function deleteTask(no){
   if(!confirm('No.'+no+' を削除してもよいですか？\nこの操作は元に戻せません。')) return;
   const idx = TASKS.findIndex(t=>t.no===no);
   if(idx>=0) TASKS.splice(idx,1);
+  tasksEdited = true;
   renderTaskEditList();
   scheduleSave();
 }
@@ -2031,6 +2036,7 @@ function saveData(){
         }])
       )
     };
+    if(tasksEdited) data.tasks = TASKS;
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){console.warn('保存失敗:',e);}
 }
@@ -2040,6 +2046,8 @@ function loadData(){
     const raw = localStorage.getItem(SAVE_KEY);
     if(!raw) return false;
     const data = JSON.parse(raw);
+    // ボックス（TASKS）は pStates より先に戻す（initPState が TASKS を使うため）
+    if(Array.isArray(data.tasks)){ TASKS.splice(0, TASKS.length, ...data.tasks); tasksEdited = true; }
     if(data.props) props.splice(0, props.length, ...data.props);
     if(data.nextPid) nextPid = data.nextPid;
     if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
