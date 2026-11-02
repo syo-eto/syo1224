@@ -1,0 +1,12 @@
+{
+  "name": "housing-roadmap",
+  "private": true,
+  "description": "注文住宅ロードマップ管理アプリ（HTML単一ファイル）",
+  "scripts": {
+    "test": "node tests/smoke.test.js",
+    "check": "node tests/check-syntax.js"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.3"
+  }
+}
