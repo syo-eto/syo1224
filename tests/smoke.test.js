@@ -100,6 +100,22 @@ run('エクスポートのデータ構造', () => {
   w.exportAllData();
   if(!json || !('tasks' in JSON.parse(json))) throw new Error('ボックス編集後のエクスポートに tasks が無い');
 });
+run('テンプレート：Driveの「注文住宅 タスク管理表」と一致', () => {
+  // 編集済みの保存データが無い状態で、HTML内のテンプレートを確かめる
+  const w3 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  const T = w3.eval('TASKS'), box = no => T.find(t=>t.no===no);
+  if(T.length!==182) throw new Error('ボックス数 '+T.length);
+  if(box(148)||box(149)) throw new Error('重複の148・149が残っている');
+  if(box(145).items.length!==19 || box(147).items.length!==27) throw new Error('145・147のタスク数');
+  if(box(178).items.length!==1 || box(178).items[0].t!=='お花の受け取り') throw new Error('178 引渡の中身');
+  if(box(116).group!=='着工前工務業務') throw new Error('116のフェーズ');
+  // 着工後フェーズのボックスを開いて表示できる
+  w3.openAddDlg(); w3.document.getElementById('fName').value='テンプレ邸'; w3.addProperty();
+  w3.openProp(w3.eval('props[0].id')); w3.render();
+  w3.openModal(145);
+  if(!w3.document.body.textContent.includes('袖の寸法の確認')) throw new Error('145のタスクが表示されない');
+});
 console.log('\nエラー数:', errors.length);
 errors.forEach(e=>console.log(' -', e));
 
