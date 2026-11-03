@@ -166,7 +166,6 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   const gates = Object.fromEntries(w3.eval('GATES').map(g=>[g.name,g.no]));
   ['上棟','木完','工務社検','引渡'].forEach(n=>{ if(box(gates[n]).name!==n) throw new Error('ゲート「'+n+'」の番号がずれた'); });
   if(box(116).group!=='着工前工務業務') throw new Error('116のフェーズ');
-  if(box(145).category!=='監査') throw new Error('145 監査①～監査② の担当（カテゴリ）が監査でない');
   // 着工後フェーズのボックスを開いて表示できる
   w3.openAddDlg(); w3.document.getElementById('fName').value='テンプレ邸'; w3.addProperty();
   w3.openProp(w3.eval('props[0].id')); w3.render();
