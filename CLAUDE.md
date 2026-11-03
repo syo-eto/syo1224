@@ -7,7 +7,7 @@
 ## 進め方
 
 - 初回のみ `npm install`。
-- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで26項目の操作を実行）を通す。
+- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで28項目の操作を実行）を通す。
 - 構文が通っても画面が崩れることがある（過去に何度かあった）。画面に関わる変更は、`tests/smoke.test.js` にその操作を足してから直す。
 - ファイルが大きい（`TASKS` の182ボックスが1行に入っている）。全体を読み込まず、`grep -n` と `sed -n` で必要な箇所だけ見る。
 - 変更は小さく、1つずつ動作確認する。利用者は変更のたびにファイルを開いて確認する。
@@ -52,6 +52,7 @@
 - `toggleDone` `toggleFuyo` `saveHelp` `saveTanto` `saveGate` `addProperty` `cycleState` `bulkFuyo` は、末尾で関数を包んで `scheduleSave()` を呼んでいる。ほかに保存が必要な処理は、自分で `scheduleSave()` を呼ぶ。
 - 起動の順序は `loadData()` → `renderPropList()`。保存先のキーは `localStorage` の `housing_roadmap_v7`。
 - `TASKS` は、ボックス管理で編集したとき（`tasksEdited` が true）だけ保存キーの `tasks` に保存し、`loadData` で `pStates` より先に戻す。未編集の利用者にはHTML内のテンプレートがそのまま使われる。一度編集した利用者には、HTML側の `TASKS` を更新しても届かない。
+- ボックス番号は `TASKS` のほか `TASK_GATE_MAP` `TASK_OFFSETS` `GATES` と、保存データ（`pStates` の各キー、`kanryoDates` `itemCheckDates` `taskLinks`）でも使う。番号を付け替えるときは全部を揃え、`migrateBoxNos` のように旧データを移す処理を足して `BOX_NO_VER` を上げる。
 - ブラウザのアドレスバーでは `javascript:` が実行できない。保存データを消すときは、開発者ツールのConsoleで実行するか、起動時に一時的な `removeItem` を入れる（戻し忘れに注意）。
 - 全角の括弧や空白が混ざると構文エラーになる。生成したコードは必ず `npm run check` にかける。
 - 2つ目の `<script>` は PWA の manifest。http(s) で配信したときだけ働く。
@@ -74,8 +75,8 @@
 
 - [x] ボックス管理での編集（追加・編集・削除、タスクの文言）が再読み込みで戻る → 保存・復元とエクスポート／インポートに `TASKS` を含めた。
 - [ ] 一括不要のときに、ボックスの状態を新しく「不要」にするか、今の「完了」のままにするか（利用者に確認中）。
-- [x] 148「着工~監査①」・149「監査①~監査②」は144・145の重複だった（同じシートを指し、一覧の行も名前と状態が空）→ 削除し、182ボックスにした。番号は詰めていない。
-- [ ] 150「上棟案内」は `TASK_OFFSETS` と `TASK_GATE_MAP` に無く、ゲートを入れても期日が付かない。
+- [x] 148「着工~監査①」・149「監査①~監査②」は144・145の重複だった（同じシートを指し、一覧の行も名前と状態が空）→ 削除し、150以降を2つ詰めて1〜182の連番にした。保存データは `migrateBoxNos` が起動時とインポート時に一度だけ新番号へ移す（`boxNoVer: 2` の印で判定）。
+- [ ] 148「上棟案内」（旧150）は `TASK_OFFSETS` と `TASK_GATE_MAP` に無く、ゲートを入れても期日が付かない。
 - [ ] 「設計工務引継ぎ」「図面FB」に対応するボックスの要否を確認する。
 - [ ] 複数人での共有と認証：Cloudflare Pages ＋ Supabase への移行（保留中）。即時反映が必要なため。HTML単体では、データが各自のブラウザに閉じる。
 - [ ] 添付（URL・PDF・画像）は localStorage の約5MBの制限を受け、「ボックス番号＋タスクの位置」に紐づく。タスクの並びを変えるとずれる。

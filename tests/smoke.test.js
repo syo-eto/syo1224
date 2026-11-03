@@ -106,15 +106,61 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
   const T = w3.eval('TASKS'), box = no => T.find(t=>t.no===no);
   if(T.length!==182) throw new Error('ボックス数 '+T.length);
-  if(box(148)||box(149)) throw new Error('重複の148・149が残っている');
+  if(!T.every((t,i)=>t.no===i+1)) throw new Error('番号が1〜182の連番でない');
+  if(box(148).name!=='上棟案内') throw new Error('148が上棟案内でない（番号の詰め）');
+  if(T.some(t=>t.name==='着工~監査①'||t.name==='監査①~監査②')) throw new Error('重複の旧148・149が残っている');
   if(box(145).items.length!==19 || box(147).items.length!==27) throw new Error('145・147のタスク数');
-  if(box(178).items.length!==1 || box(178).items[0].t!=='お花の受け取り') throw new Error('178 引渡の中身');
+  if(box(176).name!=='引渡' || box(176).items.length!==1 || box(176).items[0].t!=='お花の受け取り') throw new Error('176 引渡の中身');
+  const gates = Object.fromEntries(w3.eval('GATES').map(g=>[g.name,g.no]));
+  ['上棟','木完','工務社検','引渡'].forEach(n=>{ if(box(gates[n]).name!==n) throw new Error('ゲート「'+n+'」の番号がずれた'); });
   if(box(116).group!=='着工前工務業務') throw new Error('116のフェーズ');
   // 着工後フェーズのボックスを開いて表示できる
   w3.openAddDlg(); w3.document.getElementById('fName').value='テンプレ邸'; w3.addProperty();
   w3.openProp(w3.eval('props[0].id')); w3.render();
   w3.openModal(145);
   if(!w3.document.body.textContent.includes('袖の寸法の確認')) throw new Error('145のタスクが表示されない');
+});
+const OLD_DATA = { // 番号を詰める前（184ボックス）の保存データ
+  props:[{id:1,name:'旧邸'}], nextPid:2,
+  pStates:{1:{ts:{'147':'完了','148':'完了','150':'完了','184':'進行中'}, done:{'150':[true,false]}, fuyo:{}, help:{}, memo:{}, overrideDue:{'176':'2026-12-01'}}},
+  kanryoDates:{'1_150':'2026-10-01','1_149':'2026-09-01'}, itemCheckDates:{'1_178_0':'2026-10-02'},
+  taskLinks:{'150_0':[{title:'案内',url:'http://x'}],'148_0':[{title:'重複',url:'http://y'}]},
+};
+const checkMigrated = (win, label) => {
+  const st = win.eval('pStates')[1];
+  if(st.ts[148]!=='完了') throw new Error(label+'：旧150（上棟案内）の状態が148に移っていない');
+  if(st.ts[182]!=='進行中') throw new Error(label+'：旧184の状態が182に移っていない');
+  if(st.ts[147]!=='完了') throw new Error(label+'：147が変わった');
+  if(!st.done[148] || st.done[148][0]!==true) throw new Error(label+'：タスクの完了が移っていない');
+  if(st.overrideDue[174]!=='2026-12-01') throw new Error(label+'：期日が移っていない');
+  const k = win.eval('kanryoDates'), ic = win.eval('itemCheckDates'), l = win.eval('taskLinks');
+  if(k['1_148']!=='2026-10-01' || k['1_149']) throw new Error(label+'：完了日 '+JSON.stringify(k));
+  if(ic['1_176_0']!=='2026-10-02') throw new Error(label+'：チェック日 '+JSON.stringify(ic));
+  if(!l['148_0'] || l['148_0'][0].title!=='案内') throw new Error(label+'：添付 '+JSON.stringify(l));
+};
+run('旧番号の保存データを新番号へ移す', () => {
+  const w4 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(OLD_DATA)); }}).window;
+  checkMigrated(w4, '起動時');
+  // 保存し直しても、もう一度ずらさない
+  w4.saveData();
+  const saved = w4.localStorage.getItem('housing_roadmap_v7');
+  if(JSON.parse(saved).boxNoVer!==2) throw new Error('boxNoVer が保存されていない');
+  const w5 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
+  checkMigrated(w5, '再読み込み');
+});
+run('ボックス編集済みの旧データも番号を詰める', () => {
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS))').slice(0,147)
+    .concat([{no:148,name:'着工~監査①',items:[]},{no:149,name:'監査①~監査②',items:[]},{no:150,name:'上棟案内',items:[]},{no:185,name:'自分で足したボックス',items:[]}]);
+  const data = Object.assign(JSON.parse(JSON.stringify(OLD_DATA)), {tasks});
+  const w6 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  const T = w6.eval('TASKS');
+  if(T.some(t=>t.name==='着工~監査①')) throw new Error('旧148が残っている');
+  if(T.find(t=>t.no===148).name!=='上棟案内') throw new Error('148が上棟案内でない');
+  if(T.find(t=>t.no===183).name!=='自分で足したボックス') throw new Error('追加ボックスが183になっていない');
+  checkMigrated(w6, '編集済み');
 });
 console.log('\nエラー数:', errors.length);
 errors.forEach(e=>console.log(' -', e));
