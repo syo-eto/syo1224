@@ -130,6 +130,16 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   w3.openModal(145);
   if(!w3.document.body.textContent.includes('袖の寸法の確認')) throw new Error('145のタスクが表示されない');
 });
+run('ゲートを入れると全ボックスに期日が付く（上棟案内を含む）', () => {
+  const w4 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  w4.openAddDlg(); w4.document.getElementById('fName').value='期日邸'; w4.addProperty();
+  w4.openProp(w4.eval('props[0].id'));
+  w4.openGateDlg(); w4.document.getElementById('gate-キックオフ').value='2026-01-01'; w4.saveGate();
+  if(w4.getEffectiveDue(148)!=='2025-08-11') throw new Error('148 上棟案内の期日 '+w4.getEffectiveDue(148));
+  const offs = w4.eval('TASK_OFFSETS'), map = w4.eval('TASK_GATE_MAP');
+  if(Object.keys(map).sort().join()!==Object.keys(offs).sort().join()) throw new Error('TASK_GATE_MAP と TASK_OFFSETS の番号が揃っていない');
+});
 const OLD_DATA = { // 番号を詰める前（184ボックス）の保存データ
   props:[{id:1,name:'旧邸'}], nextPid:2,
   pStates:{1:{ts:{'147':'完了','148':'完了','150':'完了','184':'進行中'}, done:{'150':[true,false]}, fuyo:{}, help:{}, memo:{}, overrideDue:{'176':'2026-12-01'}}},
