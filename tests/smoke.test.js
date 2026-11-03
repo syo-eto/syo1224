@@ -113,6 +113,36 @@ run('ボックス編集が再読み込み後も残る', () => {
   d2.saveData();
   if(!('tasks' in JSON.parse(d2.localStorage.getItem('housing_roadmap_v7')))) throw new Error('再保存で tasks が消えた');
 });
+run('タスクを削除・文言変更しても、添付とチェックがずれない', () => {
+  const w5 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  const d5 = w5.document; w5.confirm = () => true;
+  w5.openAddDlg(); d5.getElementById('fName').value='添付邸'; w5.addProperty();
+  const pid = w5.eval('props[0].id');
+  w5.openProp(pid);
+  const no = w5.eval('TASKS.find(t=>t.items.length>=3).no');
+  const texts = w5.eval('TASKS.find(t=>t.no==='+no+').items.map(i=>i.t)');
+  w5.openModal(no); w5.toggleDone(no, 2, true); w5.closeModal && w5.closeModal();
+  const icd = w5.eval('itemCheckDates["'+pid+'_'+no+'_2"]');
+  w5.eval('taskLinks["'+no+'_0"]=[{title:"消える",url:"https://a"}]; taskLinks["'+no+'_2"]=[{title:"三番目",url:"https://c"}];');
+  // 1つ目を削除、2つ目（元の3つ目）の文言を直す
+  w5.openEditTaskDlg(no);
+  w5.deleteCheckItem(0);
+  if(!d5.getElementById('teItemList').textContent.includes('三番目')) throw new Error('編集画面で添付が元のタスクに付いていない');
+  w5.eval('tempItems[1].t="文言を直した"');
+  w5.saveTaskEdit();
+  const L = w5.eval('taskLinks');
+  if(!L[no+'_1'] || L[no+'_1'][0].title!=='三番目') throw new Error('添付が新しい位置に移っていない '+JSON.stringify(L[no+'_1']));
+  if(L[no+'_0'] || L[no+'_2']) throw new Error('古い位置に添付が残っている');
+  if(w5.eval('pStates['+pid+'].done['+no+'][1]')!==true) throw new Error('チェックが新しい位置に移っていない');
+  if(w5.eval('itemCheckDates["'+pid+'_'+no+'_1"]')!==icd) throw new Error('チェック日が移っていない');
+  if(w5.eval('itemCheckDates["'+pid+'_'+no+'_2"]')) throw new Error('古い位置にチェック日が残っている');
+  if(w5.eval('TASKS.find(t=>t.no==='+no+').items[1].t')!=='文言を直した') throw new Error('文言');
+  if(w5.eval('TASKS.find(t=>t.no==='+no+').items.some(i=>"_oi" in i)')) throw new Error('作業用の _oi が保存データに残る');
+  // ボックスを削除すると添付も消える
+  w5.deleteTask(no);
+  if(Object.keys(w5.eval('taskLinks')).some(k=>k.startsWith(no+'_'))) throw new Error('削除したボックスの添付が残る');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};

@@ -1949,7 +1949,8 @@ function openEditTaskDlg(no){
   const t = TASKS.find(x=>x.no===no);
   if(!t) return;
   editingTaskNo = no;
-  tempItems = t.items.map(i=>({...i}));
+  // _oi：編集前の位置。保存時に添付・チェック状態を新しい位置へ移すのに使う
+  tempItems = t.items.map((i,k)=>({...i,_oi:k}));
   document.getElementById('taskEditDlgTitle').textContent = 'No.'+t.no+' 編集';
   document.getElementById('teTaskName').value = t.name;
   document.getElementById('teTaskNo').value = t.no;
@@ -2001,7 +2002,8 @@ function renderTempItems(){
         +'</select>'
         +'<button class="te-item-del" onclick="deleteCheckItem('+i+')">✕</button>'
       +'</div>'
-      +(editingTaskNo!==null?renderTaskLinksEdit(editingTaskNo,i):'')
+      +(editingTaskNo===null?'':item._oi!==undefined?renderTaskLinksEdit(editingTaskNo,item._oi)
+        :'<div class="task-link-wrap" style="font-size:12px;color:var(--color-text-tertiary,#999)">添付は保存後に追加できます</div>')
     +'</div>';
   }).join('');
 }
@@ -2012,7 +2014,9 @@ function saveTaskEdit(){
   const no = parseInt(document.getElementById('teTaskNo').value)||0;
   const group = document.getElementById('teTaskGroup').value;
   const category = document.getElementById('teTaskCat').value;
-  const items = tempItems.filter(i=>i.t.trim());
+  const kept = tempItems.filter(i=>i.t.trim());
+  const oiList = kept.map(i=>i._oi); // 新しい位置 → 編集前の位置（新規は undefined）
+  const items = kept.map(({_oi,...i})=>i);
 
   if(editingTaskNo===null){
     // 新規追加
@@ -2031,22 +2035,33 @@ function saveTaskEdit(){
     // 編集
     const idx = TASKS.findIndex(t=>t.no===editingTaskNo);
     if(idx>=0){
-      const oldItems = TASKS[idx].items;
+      const oldNo = editingTaskNo;
+      // 消したタスクに添付があれば確認する
+      const lostLinks = TASKS[idx].items.reduce((n,_,k)=>n+(oiList.includes(k)?0:((taskLinks[getLinkKey(oldNo,k)]||[]).length)),0);
+      if(lostLinks && !confirm('削除するタスクに添付が'+lostLinks+'件あります。添付も削除されます。よいですか？')) return;
       TASKS[idx]={...TASKS[idx],no,name,group,category,items};
+      // 添付（全物件共通）を新しい位置へ移す
+      const oldLinks = {};
+      Object.keys(taskLinks).forEach(k=>{ if(k.startsWith(oldNo+'_')){ oldLinks[k]=taskLinks[k]; delete taskLinks[k]; } });
+      oiList.forEach((oi,ni)=>{ const l=oi!==undefined&&oldLinks[getLinkKey(oldNo,oi)]; if(l&&l.length) taskLinks[getLinkKey(no,ni)]=l; });
       props.forEach(p=>{
         if(!pStates[p.id]) return;
-        const taskState = pStates[p.id].ts[no]||'着手前';
+        const taskState = pStates[p.id].ts[oldNo]||'着手前';
         // 完了タスクはチェック項目を変更しない
         if(taskState==='完了') return;
-        const oldDone = pStates[p.id].done[no]||[];
-        const oldFuyo = pStates[p.id].fuyo[no]||[];
-        const oldHelp = pStates[p.id].help[no]||[];
-        const oldMemo = pStates[p.id].memo[no]||[];
-        // 新規追加項目のみ末尾に追加、既存項目はテキスト一致で引き継ぎ
+        const oldDone = pStates[p.id].done[oldNo]||[];
+        const oldFuyo = pStates[p.id].fuyo[oldNo]||[];
+        const oldHelp = pStates[p.id].help[oldNo]||[];
+        const oldMemo = pStates[p.id].memo[oldNo]||[];
+        // 既存タスクは編集前の位置から引き継ぎ（文言を直しても残る）、新規は未チェック
         const newDone=[],newFuyo=[],newHelp=[],newMemo=[];
-        items.forEach(item=>{
-          const mi = oldItems.findIndex(oi=>oi.t===item.t);
-          if(mi>=0){
+        // チェック日も新しい位置へ移す
+        const pre = p.id+'_'+oldNo+'_', oldIcd = {};
+        Object.keys(itemCheckDates).forEach(k=>{ if(k.startsWith(pre)){ oldIcd[k.slice(pre.length)]=itemCheckDates[k]; delete itemCheckDates[k]; } });
+        oiList.forEach((mi,ni)=>{ if(mi!==undefined&&oldIcd[mi]) itemCheckDates[p.id+'_'+no+'_'+ni]=oldIcd[mi]; });
+        items.forEach((item,ni)=>{
+          const mi = oiList[ni];
+          if(mi!==undefined){
             // 既存項目→チェック状態を引き継ぎ
             newDone.push(oldDone[mi]||false);
             newFuyo.push(oldFuyo[mi]||false);
@@ -2077,6 +2092,8 @@ function deleteTask(no){
   if(!confirm('No.'+no+' を削除してもよいですか？\nこの操作は元に戻せません。')) return;
   const idx = TASKS.findIndex(t=>t.no===no);
   if(idx>=0) TASKS.splice(idx,1);
+  // 同じ番号で新しく作ったボックスに古い添付が付かないよう、添付も消す
+  Object.keys(taskLinks).forEach(k=>{ if(k.startsWith(no+'_')) delete taskLinks[k]; });
   tasksEdited = true;
   renderTaskEditList();
   scheduleSave();
