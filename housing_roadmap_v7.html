@@ -249,6 +249,40 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 .form-row{margin-bottom:.8rem}
 .form-row label{display:block;font-size:12px;color:var(--color-text-secondary,#666);margin-bottom:4px;font-weight:500}
 .form-row input{width:100%;font-size:14px;padding:7px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:8px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)}
+/* ===== 画面幅ごとの表示（スマートフォン：〜600px／タブレット：601〜1024px／PC：1025px〜） ===== */
+.prop-cards{display:none}
+@media (max-width:600px){
+  body{padding:0 .75rem}
+  /* 物件一覧：ヘッダー */
+  .list-hdr{flex-direction:column;align-items:stretch;gap:.6rem}
+  .list-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:6px!important}
+  .list-actions button{font-size:13px;padding:8px 6px;white-space:nowrap;border-radius:8px}
+  .list-actions .admin-btn{order:9;color:var(--color-text-primary,#1a1a1a)}
+  #propSortF{font-size:14px!important;padding:6px 8px!important}
+  #propStatusFilters{flex-wrap:nowrap!important;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  #propStatusFilters>*{flex-shrink:0}
+  /* 物件一覧：表をカードに切り替え */
+  .prop-table-wrap{display:none}
+  .prop-cards{display:flex;flex-direction:column;gap:10px}
+}
+.pc-card{border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:12px;padding:12px;background:var(--color-background-primary,#fff)}
+.pc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer}
+.pc-name{font-size:17px;font-weight:700;line-height:1.3}
+.pc-sub{font-size:12px;color:var(--color-text-secondary,#666);margin-top:2px}
+.pc-alerts{display:flex;gap:6px;margin:10px 0 8px}
+.pc-alert{flex:1;display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 10px;border-radius:8px;background:var(--color-background-secondary,#f5f5f5);color:var(--color-text-secondary,#666)}
+.pc-alert b{font-size:15px;color:var(--color-text-tertiary,#999)}
+.pc-alert.on{cursor:pointer}
+.pc-alert.on.ov{background:#FCEBEB}.pc-alert.on.ov b{color:#A32D2D}
+.pc-alert.on.hp{background:#FBEAF0}.pc-alert.on.hp b{color:#C0305A}
+.pc-phases{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.pc-ph{display:flex;flex-direction:column;align-items:center;padding:5px 2px;border-radius:6px;background:var(--color-background-secondary,#f5f5f5);cursor:pointer;min-height:44px;justify-content:center}
+.pc-ph span{font-size:11px;color:var(--color-text-secondary,#666);white-space:nowrap}
+.pc-ph b{font-size:14px;color:var(--color-text-tertiary,#bbb)}
+.pc-ph.wip{background:#D4ECFF}.pc-ph.wip b{color:#0C447C}
+.pc-ph.done{background:#C6E8B0}.pc-ph.done b{color:#1E5C05}
+.pc-ph.cur{outline:2px solid #378ADD;outline-offset:-2px}
+.pc-empty{padding:2rem;text-align:center;color:var(--color-text-tertiary,#999)}
 </style>
 </head>
 <body>
@@ -347,7 +381,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
       <button class="add-btn" style="background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);border:.5px solid var(--color-border-secondary,#d0d0d0)" onclick="goToMyTasks()">📋 担当ボックス</button>
 
@@ -391,6 +425,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
       <tbody id="propTbody"></tbody>
     </table>
   </div>
+  <div class="prop-cards" id="propCards"></div>
 </div>
 
 <!-- ロードマップ -->
@@ -783,9 +818,37 @@ function sortedProps(){
   return list;
 }
 
+// スマートフォン用：物件ごとのカード（表と同じ内容。600px以下でだけ表示）
+const CARD_PHASES=['プラン確定','完成宅地','構造','確認申請','設計図書','着工前工務','着工後','上棟後','引渡し'];
+function renderPropCards(){
+  const box=document.getElementById('propCards');
+  if(!box) return;
+  if(!props.length){ box.innerHTML='<div class="pc-empty">物件が登録されていません</div>'; return; }
+  box.innerHTML=sortedProps().map(p=>{
+    const ov=overdueCount(p.id),hp=helpCount(p.id),st=getPropStatus(p);
+    let cur=PCOLS.findIndex(c=>{const nos=TASKS.filter(t=>c.g.includes(t.group)).map(t=>t.no);return nos.length&&!nos.every(no=>pStates[p.id].ts[no]==='完了');});
+    const phases=CARD_PHASES.map((label,i)=>{
+      const pct=phasePct(p.id,i).pct,cls=pct===100?'done':pct>0?'wip':'';
+      return '<div class="pc-ph '+cls+(i===cur?' cur':'')+'" onclick="openPropPhase('+p.id+','+i+')"><span>'+label+'</span><b>'+pct+'%</b></div>';
+    }).join('');
+    return '<div class="pc-card">'
+      +'<div class="pc-top" onclick="openProp('+p.id+')"><div><div class="pc-name">🏠 '+p.name+'</div>'
+      +(p.addr?'<div class="pc-sub">📍 '+p.addr+'</div>':'')
+      +(p.tanto?'<div class="pc-sub">👤 '+p.tanto+'</div>':'')
+      +'</div><span class="prop-status-badge pst-'+st.replace(/\s/g,'')+'">'+st+'</span></div>'
+      +'<div class="pc-alerts">'
+      +'<div class="pc-alert ov'+(ov>0?' on':'')+'"'+(ov>0?' onclick="openOverdue('+p.id+')"':'')+'>期日超過<b>'+ov+'</b></div>'
+      +'<div class="pc-alert hp'+(hp>0?' on':'')+'"'+(hp>0?' onclick="openHelpList('+p.id+')"':'')+'>HELP😢<b>'+hp+'</b></div>'
+      +'</div>'
+      +'<div class="pc-phases">'+phases+'</div>'
+      +'</div>';
+  }).join('');
+}
+
 function renderPropList(){
   renderStatusFilters();
   const tb=document.getElementById('propTbody');
+  renderPropCards();
   if(!props.length){
     tb.innerHTML='<tr><td colspan="9" style="padding:2rem;text-align:center;color:var(--color-text-tertiary,#999)">物件が登録されていません</td></tr>';
     return;

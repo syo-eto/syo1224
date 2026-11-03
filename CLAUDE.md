@@ -7,7 +7,7 @@
 ## 進め方
 
 - 初回のみ `npm install`。
-- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで28項目の操作を実行）を通す。
+- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで29項目の操作を実行）を通す。
 - 構文が通っても画面が崩れることがある（過去に何度かあった）。画面に関わる変更は、`tests/smoke.test.js` にその操作を足してから直す。
 - ファイルが大きい（`TASKS` の182ボックスが1行に入っている）。全体を読み込まず、`grep -n` と `sed -n` で必要な箇所だけ見る。
 - 変更は小さく、1つずつ動作確認する。利用者は変更のたびにファイルを開いて確認する。
@@ -25,6 +25,13 @@
 | 担当者 | `openTantoDlg` `saveTanto` `goToMyTasks` `renderMyTasks` |
 | 管理者設定 | `goToAdmin` `switchAdminTab` `renderPropAdminList` `deleteProp` `renderTaskEditList` `saveTaskEdit` `openLinkAdd` |
 | 保存 | `saveData` `loadData` `scheduleSave` `exportAllData` `importAllData` |
+
+## 画面幅ごとの表示
+
+- 3区分：スマートフォン 〜600px、タブレット 601〜1024px、PC 1025px〜。CSSは `</style>` 直前の「画面幅ごとの表示」にまとめる。PCの表示は変えない。
+- スマートフォンの物件一覧は、表（`propTbody`）を隠し、カード（`renderPropCards`／`#propCards`）を表示する。表とカードは同じデータから毎回両方作る。
+- 対応済み：スマホの物件一覧。未対応：スマホのロードマップ・各ダイアログ・担当ボックス・管理者設定、タブレット全般（物件一覧の表は最小幅1000pxなので横にスクロールする）。
+- 確認は Playwright の `devices['iPhone 13']` `devices['iPad (gen 7)']` で画面を撮って行う（jsdom は `@media` を判定しない）。
 
 ## データモデル
 

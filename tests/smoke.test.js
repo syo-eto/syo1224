@@ -33,6 +33,16 @@ run('物件一覧の描画(ステータス=プラン前)', () => {
   w.renderPropList();
   if(!d.getElementById('propTbody').textContent.includes('プラン前')) throw new Error('プラン前が無い: '+d.getElementById('propTbody').textContent.slice(0,80));
 });
+run('スマートフォン用の物件カード', () => {
+  w.renderPropList();
+  const cards = d.querySelectorAll('#propCards .pc-card');
+  if(cards.length!==w.eval('props.length')) throw new Error('カード数 '+cards.length);
+  const c = cards[0];
+  if(!c.textContent.includes('テスト邸')) throw new Error('物件名が無い');
+  if(c.querySelectorAll('.pc-ph').length!==w.eval('PCOLS.length')) throw new Error('フェーズの数が PCOLS と違う');
+  if(!c.querySelector('.prop-status-badge')) throw new Error('ステータスが無い');
+  if(c.querySelectorAll('.pc-ph.cur').length!==1) throw new Error('今のフェーズの印が1つでない');
+});
 run('物件を開く(ロードマップ)', () => { w.openProp(w.eval('props[0].id')); if(active()!=='page-rm') throw new Error(active()); });
 run('ゲート設定リンクが表示される', () => { if(d.getElementById('gateLinkBtn').style.display==='none') throw new Error('非表示'); });
 run('ゲート設定ダイアログ', () => { w.openGateDlg(); });
