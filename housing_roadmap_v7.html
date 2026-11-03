@@ -11,7 +11,7 @@ body{font-family:var(--font-sans,-apple-system,sans-serif);font-size:15px;color:
 .c企画{background:#E6F1FB;color:#0C447C}.c建築家{background:#EAF3DE;color:#27500A}.c会議{background:#FAEEDA;color:#633806}.c打合せ{background:#F1EEFE;color:#3C3489}.c設計チェック{background:#FDE8F3;color:#7A1850}.c現場監督{background:#E8F5F0;color:#0F4A38}.cIC{background:#FEF0E6;color:#7A3210}.c設計作図{background:#E6EEF8;color:#1A3D6B}.c構造{background:#F5EBE6;color:#5C2A10}.c申請{background:#EDF5E6;color:#2A5210}.c工務補助{background:#F0EDE8;color:#443828}.c企画補助{background:#E8F0F5;color:#1A3050}
 .c基礎監督{background:#E6F5EE;color:#0A4A2A}.c監査{background:#F5E6EE;color:#4A0A2A}.c技術{background:#EEE6F5;color:#2A0A4A}
 .gプラン確定{background:#E6F1FB;color:#0C447C}.g完成宅地{background:#EAF3DE;color:#27500A}.g図書{background:#FAEEDA;color:#633806}.g構造{background:#F5EBE6;color:#5C2A10}.g確認{background:#FDE8F3;color:#7A1850}.g着工前工務業務{background:#E8F5F0;color:#0F4A38}.g着工後{background:#FEF0E6;color:#7A3210}.g上棟後{background:#F1EEFE;color:#3C3489}.g引渡し{background:#FCEBEB;color:#791F1F}.g引渡後{background:#F0EDE8;color:#443828}
-.s着手前{background:#E6F1FB;color:#185FA5}.s進行中{background:#FAEEDA;color:#854F0B}.s完了{background:#EAF3DE;color:#3B6D11}
+.s着手前{background:#E6F1FB;color:#185FA5}.s進行中{background:#FAEEDA;color:#854F0B}.s完了{background:#EAF3DE;color:#3B6D11}.sFuyo{background:#f0f0f0;color:#666}
 .help-dot{width:7px;height:7px;border-radius:50%;background:#E24B4A;display:inline-block;flex-shrink:0}
 .due-over{color:#A32D2D;font-weight:500}.due-soon{color:#854F0B}
 
@@ -1257,6 +1257,8 @@ function render(){
     const grpCls='g'+(t.group||'').replace(/\s/g,'');
     const catCls='c'+(t.category||'').replace(/\s/g,'');
     const kb=getKanryobi(t.no);
+    // 全タスクが不要のボックス：状態は「完了」のまま、表示だけ「不要」
+    const allFuyo=st==='完了'&&prog&&prog.total>0&&prog.fuyoN===prog.total;
     return '<tr class="'+(st==='完了'?'done-row':'')+'">'
       +'<td class="no-col">'+t.no+'</td>'
       +'<td><span class="tlink" onclick="openModal('+t.no+')">'
@@ -1268,7 +1270,7 @@ function render(){
       +'<td style="font-size:13px;color:var(--color-text-secondary,#666)">'+((['会議','打合せ'].includes(t.category))?'―':((tantoMap[curPid]&&tantoMap[curPid][t.category])||t.tanto||'―'))+'</td>'
       +'<td style="font-size:13px;white-space:nowrap">'+fmtDue(getEffectiveDue(t.no))+'</td>'
       +'<td style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
-      +'<td><span class="badge s'+st+'">'+st+'</span></td></tr>';
+      +'<td>'+(allFuyo?'<span class="badge sFuyo" title="全タスクが不要（進捗では完了扱い）">不要</span>':'<span class="badge s'+st+'">'+st+'</span>')+'</td></tr>';
   }).join('');
 }
 

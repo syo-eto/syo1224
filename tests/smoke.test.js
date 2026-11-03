@@ -48,7 +48,18 @@ run('ゲート設定リンクが表示される', () => { if(d.getElementById('g
 run('ゲート設定ダイアログ', () => { w.openGateDlg(); });
 run('担当者設定ダイアログ', () => { w.openTantoDlg(); });
 run('ボックスのモーダルを開く', () => { w.openModal(2); });
-run('一括不要トグル', () => { w.bulkFuyo(); w.bulkFuyo(); });
+run('一括不要：状態は完了のまま、表には「不要」と出る', () => {
+  w.bulkFuyo();
+  const pid = w.eval('curPid');
+  if(w.eval('pStates['+pid+'].ts[2]')!=='完了') throw new Error('状態が完了にならない');
+  const row = [...d.querySelectorAll('#tbody tr, tbody tr')].find(r=>r.querySelector('.no-col')&&r.querySelector('.no-col').textContent==='2');
+  if(!row || !row.querySelector('.sFuyo')) throw new Error('表に「不要」が出ない');
+  w.bulkFuyo();
+  if(w.eval('pStates['+pid+'].ts[2]')==='完了') throw new Error('解除しても完了のまま');
+  if(row.isConnected && row.querySelector('.sFuyo')) throw new Error('解除後も不要の表示');
+  const row2 = [...d.querySelectorAll('tbody tr')].find(r=>r.querySelector('.no-col')&&r.querySelector('.no-col').textContent==='2');
+  if(row2.querySelector('.sFuyo')) throw new Error('解除後も不要の表示');
+});
 run('一覧へ戻る', () => { w.goBack(); });
 run('担当ボックス画面', () => { w.goToMyTasks(); if(active()!=='page-mytasks') throw new Error(active()); });
 run('担当ボックス: スタッフ切替', () => { const s=d.getElementById('myTaskStaffSel'); s.value=s.options[3].value; w.onMyTaskStaffChange(); });
