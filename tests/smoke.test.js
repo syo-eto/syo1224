@@ -144,6 +144,16 @@ run('タスクを削除・文言変更しても、添付とチェックがずれ
   w5.deleteTask(no);
   if(Object.keys(w5.eval('taskLinks')).some(k=>k.startsWith(no+'_'))) throw new Error('削除したボックスの添付が残る');
 });
+run('保存したボックス一覧のフェーズ「引渡し」も「引渡前」になる', () => {
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS))').map(t=>t.group==='引渡前'?Object.assign(t,{group:'引渡し'}):t);
+  const data = {boxNoVer:2, props:[], nextPid:1, tasks};
+  const w7 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  const T = w7.eval('TASKS');
+  if(T.some(t=>t.group==='引渡し')) throw new Error('引渡しが残っている');
+  if(!T.some(t=>t.group==='引渡前')) throw new Error('引渡前が無い');
+  if(!w7.document.getElementById('propList') && !w7.document.body.innerHTML.includes('>引渡前</th>')) throw new Error('物件一覧の見出し');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};
@@ -166,6 +176,7 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   const gates = Object.fromEntries(w3.eval('GATES').map(g=>[g.name,g.no]));
   ['上棟','木完','工務社検','引渡'].forEach(n=>{ if(box(gates[n]).name!==n) throw new Error('ゲート「'+n+'」の番号がずれた'); });
   if(box(116).group!=='着工前工務業務') throw new Error('116のフェーズ');
+  if(T.some(t=>t.group==='引渡し') || box(176).group!=='引渡前') throw new Error('フェーズ「引渡し」が「引渡前」になっていない');
   // 着工後フェーズのボックスを開いて表示できる
   w3.openAddDlg(); w3.document.getElementById('fName').value='テンプレ邸'; w3.addProperty();
   w3.openProp(w3.eval('props[0].id')); w3.render();
