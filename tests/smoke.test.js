@@ -28,6 +28,7 @@ run('物件追加→担当者設定ウィザード', () => {
   w.addProperty();
   if(w.eval('props.length')!==1) throw new Error('props='+w.eval('props.length'));
 });
+run('ウィザード: 担当者設定にスタッフ追加が出ない', () => { if(d.getElementById('tantoStaffSection').style.display!=='none') throw new Error('スタッフ追加が表示されている'); });
 run('ウィザード: 担当者→ゲートをスキップ', () => { w.skipTantoAndNext(); w.skipGateAndFinish(); });
 run('物件一覧の描画(ステータス=プラン前)', () => {
   w.renderPropList();
@@ -46,7 +47,7 @@ run('スマートフォン用の物件カード', () => {
 run('物件を開く(ロードマップ)', () => { w.openProp(w.eval('props[0].id')); if(active()!=='page-rm') throw new Error(active()); });
 run('ゲート設定リンクが表示される', () => { if(d.getElementById('gateLinkBtn').style.display==='none') throw new Error('非表示'); });
 run('ゲート設定ダイアログ', () => { w.openGateDlg(); });
-run('担当者設定ダイアログ', () => { w.openTantoDlg(); });
+run('担当者設定ダイアログ', () => { w.openTantoDlg(); if(d.getElementById('tantoStaffSection').style.display==='none') throw new Error('通常の担当者設定でスタッフ一覧が消えた'); });
 run('ボックスのモーダルを開く', () => { w.openModal(2); });
 run('一括不要：状態は完了のまま、表には「不要」と出る', () => {
   w.bulkFuyo();

@@ -639,7 +639,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
     <div class="dialog-title">👤 担当者設定</div>
     <div class="dialog-sub" id="tantoDlgSub"></div>
     <div id="tantoRows"></div>
-    <div class="staff-section">
+    <div class="staff-section" id="tantoStaffSection">
       <div class="staff-title">▸ スタッフ一覧（追加・削除）</div>
       <div class="staff-chips" id="staffChips"></div>
       <div class="staff-new-row">
@@ -932,6 +932,8 @@ function openSetupTantoDlg(){
   document.getElementById('tantoDlgSub').textContent=p.name+' の担当者設定（スキップ可）';
   // フッターに「次へ」ボタンを追加
   document.getElementById('tantoDlgFooter').style.display='flex';
+  // 物件立ち上げ時はスタッフの追加・削除を出さない（スタッフ管理は別画面で行う）
+  document.getElementById('tantoStaffSection').style.display='none';
   renderTantoRows();renderStaffChips();
   openOv('tantoDlgOv');
 }
@@ -1118,6 +1120,7 @@ function openTantoDlg(){
   if(!tantoMap[curPid])tantoMap[curPid]={};
   document.getElementById('tantoDlgSub').textContent=p.name+' の担当者設定';
   document.getElementById('tantoDlgFooter').style.display='none';
+  document.getElementById('tantoStaffSection').style.display='';
   renderTantoRows();renderStaffChips();openOv('tantoDlgOv');
 }
 function renderTantoRows(){
