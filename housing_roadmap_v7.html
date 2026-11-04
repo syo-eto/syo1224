@@ -93,6 +93,11 @@ body{font-family:var(--font-sans,-apple-system,sans-serif);font-size:15px;color:
 .phase-bar{height:4px;background:var(--color-background-secondary,#f5f5f5);margin:3px 6px;border-radius:2px;overflow:hidden}
 .phase-bar-fill{height:100%;background:#3B6D11;border-radius:2px}
 .sub-cell{text-align:left;padding:5px 8px;border-right:.5px solid var(--color-border-tertiary,#e5e5e5)}
+.prop-table tr.prop-first td{border-top:2px solid #9aa3ae}
+.prop-table tbody tr.prop-first:first-child td{border-top:none}
+.prop-table tr.prop-alt td{background:#f6f8fb}
+.prop-table tr.prop-first td.sub-cell,.prop-table tr.prop-sub:not(.prop-last) td.sub-cell{border-bottom:.5px dashed var(--color-border-tertiary,#e5e5e5)}
+.prop-table tr.prop-alt td.phase-cell:hover,.prop-table td.sub-cell:hover{background:#eaf0f7}
 .sub-label{font-size:11px;color:var(--color-text-secondary,#666);display:block;margin-bottom:2px}
 
 /* ===== ロードマップ ===== */
@@ -873,8 +878,10 @@ function renderPropList(){
     tb.innerHTML='<tr><td colspan="9" style="padding:2rem;text-align:center;color:var(--color-text-tertiary,#999)">物件が登録されていません</td></tr>';
     return;
   }
-  tb.innerHTML=sortedProps().map(p=>{
+  tb.innerHTML=sortedProps().map((p,pi)=>{
     const ov=overdueCount(p.id),hp=helpCount(p.id);
+    // 物件ごとの区切り：1行目に太い線、1件おきに薄い背景
+    const grp=(pi%2?' prop-alt':'');
     const pct=overallPct(p.id),ph=currentPhase(p.id);
     const ph0=phasePct(p.id,0),c0=ph0.pct===100?'done':ph0.pct>0?'wip':'zero';
     const restCells=[5,6,7,8].map(i=>{
@@ -908,8 +915,8 @@ function renderPropList(){
         +'<span class="phase-pct '+rcls+'" style="font-size:12px;padding:1px 6px;flex-shrink:0">'+(rph.pct>0?rph.pct+'%':'0%')+'</span>'
         +'</div></td>';
       return ri===0
-        ?'<tr>'+nameCell+statusCell+challengeCell+planCell+prepTd+restCells+'</tr>'
-        :'<tr>'+prepTd+'</tr>';
+        ?'<tr class="prop-first'+grp+'">'+nameCell+statusCell+challengeCell+planCell+prepTd+restCells+'</tr>'
+        :'<tr class="prop-sub'+grp+(ri===PREP_ROWS.length-1?' prop-last':'')+'">'+prepTd+'</tr>';
     }).join('');
     return rows;
   }).join('');

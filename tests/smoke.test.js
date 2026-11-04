@@ -224,6 +224,9 @@ run('埋め込んだドライブのデータを起動時に一度だけ取り込
   if(!names.includes('あああああ') || !names.includes('埋込邸')) throw new Error('取り込まれない '+names);
   if(a.document.getElementById('seedNotice').style.display==='none') throw new Error('お知らせが出ない');
   if(!a.document.getElementById('propTbody').textContent.includes('埋込邸')) throw new Error('一覧に出ない');
+  // 物件ごとの区切り：各物件の1行目に prop-first、1件おきに prop-alt
+  const tb=a.document.getElementById('propTbody');
+  if(tb.querySelectorAll('tr.prop-first').length!==2 || tb.querySelectorAll('tr.prop-alt').length!==4) throw new Error('物件の区切りの行の印');
   // 保存して開き直しても二重に取り込まない
   a.saveData();
   const saved = {housing_roadmap_v7:a.localStorage.getItem('housing_roadmap_v7'), housing_roadmap_v7_seed:a.localStorage.getItem('housing_roadmap_v7_seed')};
