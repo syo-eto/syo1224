@@ -22,11 +22,13 @@ def truthy(v):
     if isinstance(v,bool): return v
     return str(v).strip() in ('True','TRUE','true','1','1.0')
 staff=app['staff']
-GAICHU=set()
+GAICHU=set(); TOKUREI=set()
 def staffname(n):
     n=str(n).strip()
     # 社外の人（「〇〇さん」）は「外注」にまとめる
     if n.endswith('さん'): GAICHU.add(n); return '外注'
+    # 特例（「社長・髙橋」のような複数名）は選択肢に入れず、担当者は未設定にする
+    if '・' in n: TOKUREI.add(n); return None
     c=[s for s in staff if s.split('　')[0]==n or s.replace('　','')==n.replace('　','')]
     return c[0] if len(c)==1 else n
 APP={}
@@ -51,7 +53,8 @@ for pid,f in enumerate(files,1):
     for r in range(len(cov)):
         c=str(cov.iloc[r,0]).strip(); v=cov.iloc[r,2] if cov.shape[1]>2 else None
         if c in CATS and not isna(v) and str(v).strip() and str(v).strip()!=c:
-            tanto[c]=staffname(v)
+            nm_=staffname(v)
+            if nm_: tanto[c]=nm_
     for v in tanto.values():
         if v not in staff and v not in res['staffList']: res['staffList'].append(v)
     res['props'].append({'id':pid,'name':name,'addr':addr,'tanto':'','date':chakko or '','ki':ki,'status':''})
@@ -117,7 +120,7 @@ for pid,f in enumerate(files,1):
     res['pStates'][pid]=ps
     cnt={s:list(ps['ts'].values()).count(s) for s in ('完了','進行中','着手前')}
     report.append(dict(name=name,addr=addr,ki=ki,chakko=chakko,boxes=len(seen),missingBoxes=miss,state=cnt,itemsMatched=itemsHit,checkedRowsNotMatched=itemsMiss,tanto=tanto,appBoxesNotInSheet=[t['no'] for t in app['tasks'] if t['no'] not in seen],markedFuyo=report_absent))
-res['removeStaff']=sorted(GAICHU)
+res['removeStaff']=sorted(GAICHU|TOKUREI)
 if GAICHU and '外注' not in res['staffList']: res['staffList'].append('外注')  # 保存済みのスタッフ一覧に外注が無い人向け
 json.dump(res,open(out,'w',encoding='utf8'),ensure_ascii=False)
 for r in report: print(json.dumps(r,ensure_ascii=False))
