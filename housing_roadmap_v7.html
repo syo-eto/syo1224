@@ -399,12 +399,21 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 </div>
 
 <!-- 物件一覧 -->
+<div id="userPick" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(20,24,30,.55);align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--color-background-primary,#fff);border-radius:14px;padding:1.4rem 1.5rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.25)">
+    <div style="font-size:18px;font-weight:700;margin-bottom:.3rem">👤 だれが使いますか？</div>
+    <div style="font-size:12px;color:var(--color-text-secondary,#666);margin-bottom:1rem">名前を選ぶと始まります（パスワードはありません）。担当ボックスや更新履歴に使います。</div>
+    <div id="userPickLast"></div>
+    <div id="userPickList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+  </div>
+</div>
 <div class="page active" id="page-list">
   <div id="seedNotice" style="display:none;margin:0 0 .75rem;padding:.6rem .9rem;border-radius:8px;background:#EAF3DE;color:#3B6D11;font-size:13px"></div>
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.1.4（2026-11-04）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.2.0（2026-11-04）</span>
+      <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -1650,6 +1659,28 @@ document.addEventListener('keydown',e=>{
 
 
 let myTaskUser='';
+// ===== ユーザーの選択（ログインの代わり。パスワードなし）=====
+// 起動のたびに選ぶ。前回の人は localStorage（この端末だけ）に覚えて、一番上に出す
+let curUser='';
+const USER_KEY='housing_roadmap_v7_user';
+function userChoices(){ return staffList.filter(n=>n && n!=='外注'); }
+function openUserPick(){
+  let last=''; try{ last=localStorage.getItem(USER_KEY)||''; }catch(e){}
+  const names=userChoices();
+  const esc=n=>String(n).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const btn=(n,big)=>'<button class="user-pick-btn" data-name="'+esc(n)+'" onclick="setCurUser(this.dataset.name)" style="font-size:'+(big?'15px':'14px')+';padding:'+(big?'10px 18px':'8px 14px')+';border-radius:10px;cursor:pointer;border:.5px solid '+(big?'#185FA5':'var(--color-border-secondary,#d0d0d0)')+';background:'+(big?'#E6F1FB':'var(--color-background-primary,#fff)')+';color:var(--color-text-primary,#1a1a1a);font-weight:'+(big?700:500)+'">'+esc(n)+'</button>';
+  document.getElementById('userPickLast').innerHTML=(last&&names.includes(last))
+    ?'<div style="margin-bottom:1rem">'+btn(last,true)+'<span style="font-size:12px;color:var(--color-text-secondary,#666);margin-left:8px">前回の人</span></div>':'';
+  document.getElementById('userPickList').innerHTML=names.map(n=>btn(n,false)).join('');
+  document.getElementById('userPick').style.display='flex';
+}
+function setCurUser(name){
+  curUser=name; myTaskUser=name;
+  try{ localStorage.setItem(USER_KEY,name); }catch(e){}
+  document.getElementById('userPick').style.display='none';
+  document.getElementById('curUserLabel').textContent=name;
+  document.getElementById('curUserWrap').style.display='inline-flex';
+}
 function goToMyTasks(){
   document.getElementById('page-list').classList.remove('active');
   document.getElementById('page-rm').classList.remove('active');
@@ -2005,7 +2036,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.1.4';
+const APP_VERSION = '0.2.0';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 2;
@@ -2036,7 +2067,7 @@ const TEMPLATE_HISTORY = [
 ];
 let boxHistory = [];
 function addBoxHistory(type, no, name, detail){
-  boxHistory.push({at:new Date().toISOString(), type, no, name, detail:detail||''});
+  boxHistory.push({at:new Date().toISOString(), type, no, name, detail:detail||'', by:curUser||''});
   if(boxHistory.length>300) boxHistory.splice(0, boxHistory.length-300);
 }
 // 編集前後のボックスを比べて、変わったところを短い文にする
@@ -2063,7 +2094,7 @@ function renderBoxHistory(){
   const list=document.getElementById('boxHistoryList');
   if(!list) return;
   // 新しい順。同じ日時のものは、後に足したものを上に
-  const rows=boxHistory.map((h,i)=>({at:h.at, type:h.type, i, text:'No.'+h.no+'「'+h.name+'」'+(h.detail?'：'+h.detail:'')}))
+  const rows=boxHistory.map((h,i)=>({at:h.at, type:h.type, i, text:'No.'+h.no+'「'+h.name+'」'+(h.detail?'：'+h.detail:'')+(h.by?'（'+h.by+'）':'')}))
     .concat(TEMPLATE_HISTORY.map((h,i)=>Object.assign({i},h)))
     .sort((a,b)=>a.at<b.at?1:a.at>b.at?-1:b.i-a.i);
   document.getElementById('boxHistoryCount').textContent='（'+rows.length+'件）';
@@ -2453,6 +2484,7 @@ loadData();
 applyDriveSeed();
 
 renderPropList();
+openUserPick();
 </script>
 
 <!-- PWA manifest インライン -->

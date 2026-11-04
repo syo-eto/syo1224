@@ -349,6 +349,30 @@ run('外したスタッフ（佐藤理絵・大下翼）は保存データから
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
   if(!w15.eval('staffList').includes('佐藤　理絵')) throw new Error('足し直した人が消えた');
 });
+run('起動時に使う人を選ぶ', () => {
+  const mk = saved => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; if(saved) win.localStorage.setItem('housing_roadmap_v7_user', saved); }}).window;
+  const a = mk(null), da = a.document;
+  if(da.getElementById('userPick').style.display!=='flex') throw new Error('起動時に選ぶ画面が出ない');
+  const btns=[...da.querySelectorAll('#userPickList .user-pick-btn')].map(b=>b.dataset.name);
+  if(btns.includes('外注') || !btns.includes('江藤　奨')) throw new Error('選択肢 '+btns);
+  if(da.getElementById('userPickLast').textContent) throw new Error('初回なのに前回の人が出る');
+  da.querySelector('#userPickList .user-pick-btn[data-name="神田　美穂"]').click();
+  if(da.getElementById('userPick').style.display!=='none' || da.getElementById('curUserLabel').textContent!=='神田　美穂') throw new Error('選んだあと');
+  if(a.localStorage.getItem('housing_roadmap_v7_user')!=='神田　美穂') throw new Error('前回の人を覚えていない');
+  // 担当ボックスは選んだ人で開く
+  a.goToMyTasks(); if(da.getElementById('myTaskStaffSel').value!=='神田　美穂') throw new Error('担当ボックスの人');
+  // 更新履歴に名前
+  a.confirm=()=>true; a.goToAdmin(); a.switchAdminTab('task'); a.openEditTaskDlg(5); da.getElementById('teTaskName').value='名前変更'; a.saveTaskEdit();
+  if(a.eval('boxHistory.slice(-1)[0].by')!=='神田　美穂' || !da.getElementById('boxHistoryList').textContent.includes('（神田　美穂）')) throw new Error('更新履歴の名前');
+  // 次に開くと、前回の人が一番上に出る（選び直しは毎回）
+  const b = mk('神田　美穂');
+  if(b.document.getElementById('userPick').style.display!=='flex') throw new Error('2回目も選ぶ画面を出す');
+  if(!b.document.getElementById('userPickLast').textContent.includes('神田　美穂')) throw new Error('前回の人が出ない');
+  // 切替
+  b.document.querySelector('#userPickLast .user-pick-btn').click(); b.openUserPick();
+  if(b.document.getElementById('userPick').style.display!=='flex') throw new Error('切替で選ぶ画面が出ない');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};
