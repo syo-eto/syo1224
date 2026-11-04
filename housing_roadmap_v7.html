@@ -386,9 +386,11 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 
 <!-- 物件一覧 -->
 <div class="page active" id="page-list">
+  <div id="seedNotice" style="display:none;margin:0 0 .75rem;padding:.6rem .9rem;border-radius:8px;background:#EAF3DE;color:#3B6D11;font-size:13px"></div>
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04</span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -1807,6 +1809,25 @@ function mergeImportData(data){
   saveData();
   return res;
 }
+// ファイルに埋め込んだドライブのデータ（window.DRIVE_SEED）を、起動時に一度だけ取り込む。
+// 同じデータ（exportedAt が同じ）は二度取り込まない。埋め込みは配布用のファイルにだけ入れ、リポジトリには入れない
+function applyDriveSeed(){
+  const seed = window.DRIVE_SEED;
+  if(!seed || !seed.props) return null;
+  const KEY = SAVE_KEY+'_seed';
+  let done = '';
+  try{ done = localStorage.getItem(KEY)||''; }catch(e){}
+  if(done === seed.exportedAt) return null;
+  const r = mergeImportData(JSON.parse(JSON.stringify(seed)));
+  try{ localStorage.setItem(KEY, seed.exportedAt); }catch(e){}
+  const el = document.getElementById('seedNotice');
+  if(el){
+    el.textContent = '✅ ドライブのデータ（'+String(seed.exportedAt).slice(0,10)+'）を反映しました：追加 '+r.added.length+'件・更新 '+r.updated.length+'件';
+    el.style.display = '';
+  }
+  return r;
+}
+
 function mergeImportFile(input){
   const file = input.files[0];
   if(!file) return;
@@ -2314,6 +2335,7 @@ bulkFuyo = function(){ _origBulkFuyo(); scheduleSave(); };
 
 // 起動時にデータを復元
 loadData();
+applyDriveSeed();
 
 renderPropList();
 </script>

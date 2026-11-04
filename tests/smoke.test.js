@@ -210,6 +210,27 @@ run('38 実行予算 → 原価管理：保存データを差し替える', () =
   w9.openProp(1); w9.openModal(38);
   if(!w9.document.body.textContent.includes('原価管理表のスプレットシート')) throw new Error('38の中身が表示されない');
 });
+run('埋め込んだドライブのデータを起動時に一度だけ取り込む', () => {
+  const seed = {exportedAt:'2026-11-04T00:00:00', boxNoVer:3, props:[{id:1,name:'埋込邸',addr:'',tanto:'',date:'',ki:'',status:''}],
+    pStates:{1:{ts:{'1':'完了'},done:{},fuyo:{},help:{},memo:{},overrideDue:{}}}, tantoMap:{}, gateDates:{}, kanryoDates:{}, itemCheckDates:{}};
+  const mk = saved => new JSDOM(html.replace('<script>', '<script>window.DRIVE_SEED='+JSON.stringify(seed)+';</script><script>'), {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; if(saved) Object.entries(saved).forEach(([k,v])=>win.localStorage.setItem(k,v)); }}).window;
+  const w0 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  w0.openAddDlg(); w0.document.getElementById('fName').value='あああああ'; w0.addProperty(); w0.saveData();
+  const keep = {housing_roadmap_v7: w0.localStorage.getItem('housing_roadmap_v7')};
+  const a = mk(keep);
+  const names = a.eval('props.map(p=>p.name)');
+  if(!names.includes('あああああ') || !names.includes('埋込邸')) throw new Error('取り込まれない '+names);
+  if(a.document.getElementById('seedNotice').style.display==='none') throw new Error('お知らせが出ない');
+  if(!a.document.getElementById('propTbody').textContent.includes('埋込邸')) throw new Error('一覧に出ない');
+  // 保存して開き直しても二重に取り込まない
+  a.saveData();
+  const saved = {housing_roadmap_v7:a.localStorage.getItem('housing_roadmap_v7'), housing_roadmap_v7_seed:a.localStorage.getItem('housing_roadmap_v7_seed')};
+  const b = mk(saved);
+  if(b.eval('props.length')!==2) throw new Error('二重に取り込んだ');
+  if(b.document.getElementById('seedNotice').style.display!=='none') throw new Error('二回目もお知らせが出る');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};
