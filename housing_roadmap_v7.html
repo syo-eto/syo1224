@@ -404,7 +404,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04e</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04f</span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -896,7 +896,7 @@ function renderPropList(){
     const restCells=[5,6,7,8].map(i=>{
       const ph=phasePct(p.id,i),cls=ph.pct===100?'done':ph.pct>0?'wip':'zero';
       return '<td class="phase-cell" rowspan="4" onclick="openPropPhase('+p.id+','+i+')">'
-        +'<span class="phase-pct '+cls+'" style="font-size:18px;padding:4px 8px">'+(ph.pct>0?ph.pct+'%':'0%')+'</span></td>';
+        +'<span class="phase-pct '+cls+'" style="font-size:16px;padding:4px 8px">'+(ph.pct>0?ph.pct+'%':'0%')+'</span></td>';
     }).join('');
     const nameCell='<td class="prop-cell" rowspan="4">'
       +'<div class="prop-cell-name" onclick="openProp('+p.id+')">🏠 '+p.name+'</div>'
@@ -915,7 +915,7 @@ function renderPropList(){
       +'<div class="meta-label">HELP😢</div>'
       +'<div class="'+(hp>0?'meta-val-help':'')+'" style="'+(hp>0?'':'font-size:14px;color:var(--color-text-tertiary,#999);font-weight:700')+'">'+(hp>0?hp:'0')+'</div></div></td>';
     const planCell='<td class="phase-cell" rowspan="4" onclick="openPropPhase('+p.id+',0)">'
-      +'<span class="phase-pct '+c0+'" style="font-size:18px;padding:4px 8px">'+(ph0.pct>0?ph0.pct+'%':'0%')+'</span></td>';
+      +'<span class="phase-pct '+c0+'" style="font-size:16px;padding:4px 8px">'+(ph0.pct>0?ph0.pct+'%':'0%')+'</span></td>';
     const rows=PREP_ROWS.map((r,ri)=>{
       const rph=phasePct(p.id,r.idx),rcls=rph.pct===100?'done':rph.pct>0?'wip':'zero';
       const prepTd='<td class="sub-cell" onclick="openPropPhase('+p.id+','+r.idx+')" style="cursor:pointer">'
