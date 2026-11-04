@@ -404,7 +404,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.1.3（2026-11-04）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.1.4（2026-11-04）</span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -2005,15 +2005,23 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.1.3';
+const APP_VERSION = '0.1.4';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
-const STAFF_VER = 1;
+// STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
+const STAFF_VER = 2;
 const RETIRED_STAFF = ['佐藤　理絵','大下　翼'];
+const STAFF_ALIAS = {'社長':'佐藤　慎一郎'};
 function removeRetiredStaff(data){
   if((data.staffVer||0) >= STAFF_VER) return;
+  const drop = n => { const i=staffList.indexOf(n); if(i>=0) staffList.splice(i,1); };
   RETIRED_STAFF.forEach(n=>{
-    const i=staffList.indexOf(n); if(i>=0) staffList.splice(i,1);
+    drop(n);
     Object.values(tantoMap).forEach(m=>Object.keys(m).forEach(c=>{ if(m[c]===n) delete m[c]; }));
+  });
+  Object.entries(STAFF_ALIAS).forEach(([a,to])=>{
+    drop(a);
+    if(!staffList.includes(to)) staffList.push(to);
+    Object.values(tantoMap).forEach(m=>Object.keys(m).forEach(c=>{ if(m[c]===a) m[c]=to; }));
   });
 }
 

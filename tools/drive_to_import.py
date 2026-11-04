@@ -25,6 +25,8 @@ staff=app['staff']
 GAICHU=set(); TOKUREI=set()
 def staffname(n):
     n=str(n).strip()
+    # 「社長」は佐藤　慎一郎さん（同一人物）
+    if n=='社長': return '佐藤　慎一郎'
     # 社外の人（「〇〇さん」）は「外注」にまとめる
     if n.endswith('さん'): GAICHU.add(n); return '外注'
     # 特例（「社長・髙橋」のような複数名）は選択肢に入れず、担当者は未設定にする
