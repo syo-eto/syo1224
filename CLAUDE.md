@@ -7,7 +7,7 @@
 ## 進め方
 
 - 初回のみ `npm install`。
-- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで37項目の操作を実行）を通す。
+- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで38項目の操作を実行）を通す。
 - 構文が通っても画面が崩れることがある（過去に何度かあった）。画面に関わる変更は、`tests/smoke.test.js` にその操作を足してから直す。
 - ファイルが大きい（`TASKS` の182ボックスが1行に入っている）。全体を読み込まず、`grep -n` と `sed -n` で必要な箇所だけ見る。
 - 変更は小さく、1つずつ動作確認する。利用者は変更のたびにファイルを開いて確認する。
@@ -23,7 +23,7 @@
 | チェック画面 | `openModal` `renderModalBody` `calcProg` `checkAutoComplete` `bulkFuyo` `renderTaskLinks` |
 | ゲート・期日 | `GATES`（956行付近）`openGateDlg` `saveGate` `recalcAllDues` `getEffectiveDue` |
 | 担当者 | `openTantoDlg` `saveTanto` `goToMyTasks` `renderMyTasks` |
-| 管理者設定 | `goToAdmin` `switchAdminTab` `renderPropAdminList` `deleteProp` `renderTaskEditList` `saveTaskEdit` `openLinkAdd` |
+| 管理者設定 | `goToAdmin` `switchAdminTab` `renderPropAdminList` `deleteProp` `renderTaskEditList` `saveTaskEdit` `openLinkAdd` `renderBoxHistory` |
 | 保存 | `saveData` `loadData` `scheduleSave` `exportAllData` `importAllData` |
 
 ## 画面幅ごとの表示
@@ -42,6 +42,8 @@
 - `tantoMap[pid][職種]` = 担当者名。`gateDates[pid][ゲート名]` = `YYYY-MM-DD`。
 - `kanryoDates['pid_no']`、`itemCheckDates['pid_no_idx']`、`taskLinks['no_idx']`（添付は全物件共通）。
 - 進捗は2種類ある。ボックス単位（`phasePct` `overallPct`）は「状態が完了のボックス数 ÷ フェーズ内のボックス数」で、全タスクが不要のボックス（`isBoxFuyo`）は分母にも分子にも数えない。フェーズの全ボックスが不要なら100%。タスク単位（`calcProg`）は「完了数 ÷ 不要でないタスク数」。
+
+- ボックス管理の更新履歴：`TEMPLATE_HISTORY`（アプリに組み込んだテンプレートの更新。テンプレートを変えて配布するたびに1行追記する）と `boxHistory`（この端末でボックス管理から行った追加・編集・削除。`{at,type,no,name,detail}`、最大300件、保存・エクスポート・インポートの対象）。ボックス管理タブの「📝 更新履歴」に新しい順で出す。編集の内容は `describeBoxChange` が作る。
 
 ## 守るべき仕様
 

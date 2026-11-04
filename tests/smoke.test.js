@@ -256,6 +256,38 @@ run('不要のボックスは、フェーズの％に数えない', () => {
   const r2 = w10.eval('phasePct('+pid+',0)');
   if(r2.pct!==100) throw new Error('全不要（タスクの無いボックスは完了）で100%にならない '+JSON.stringify(r2));
 });
+run('ボックス管理の更新履歴', () => {
+  const w11 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  const d11 = w11.document; w11.confirm = () => true;
+  w11.goToAdmin(); w11.switchAdminTab('task');
+  const tplN = w11.eval('TEMPLATE_HISTORY.length');
+  if(d11.querySelectorAll('#boxHistoryList .box-hist-row').length!==tplN) throw new Error('テンプレートの更新が出ない');
+  // 編集：名前を変えてタスクを1つ消す
+  w11.openEditTaskDlg(5);
+  const before = w11.eval('TASKS.find(t=>t.no===5).name');
+  d11.getElementById('teTaskName').value = '名前を変えた';
+  w11.deleteCheckItem(0); w11.saveTaskEdit();
+  // 追加と削除
+  w11.openAddTaskDlg(); const newNo = Number(d11.getElementById('teTaskNo').value);
+  d11.getElementById('teTaskName').value = '履歴の箱'; w11.saveTaskEdit();
+  w11.deleteTask(newNo);
+  const H = w11.eval('boxHistory');
+  if(H.length!==3) throw new Error('履歴の件数 '+H.length);
+  if(H[0].type!=='編集' || !H[0].detail.includes('名前「'+before+'」→「名前を変えた」') || !H[0].detail.includes('タスク削除 1件')) throw new Error('編集の内容 '+H[0].detail);
+  if(H[1].type!=='追加' || H[2].type!=='削除' || H[2].no!==newNo) throw new Error('追加・削除');
+  // 変更なしで保存しても履歴は増えない
+  w11.openEditTaskDlg(6); w11.saveTaskEdit();
+  if(w11.eval('boxHistory.length')!==3) throw new Error('変更なしで履歴が増えた');
+  const rows = d11.querySelectorAll('#boxHistoryList .box-hist-row');
+  if(rows.length!==tplN+3 || !rows[0].textContent.includes('削除')) throw new Error('一覧の表示（新しい順）');
+  // 保存して開き直しても残る
+  w11.saveData();
+  const saved = w11.localStorage.getItem('housing_roadmap_v7');
+  const w12 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
+  if(w12.eval('boxHistory.length')!==3) throw new Error('再読み込みで履歴が消えた');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};

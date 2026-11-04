@@ -355,6 +355,10 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
           <option value="">すべてのフェーズ</option>
         </select>
       </div>
+      <details id="boxHistoryWrap" style="margin-bottom:.75rem;border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:8px;padding:.5rem .75rem">
+        <summary style="cursor:pointer;font-size:13px;font-weight:600">📝 更新履歴 <span id="boxHistoryCount" style="font-weight:400;color:var(--color-text-secondary,#666)"></span></summary>
+        <div id="boxHistoryList" style="max-height:320px;overflow-y:auto;margin-top:.5rem"></div>
+      </details>
       <div id="taskEditList"></div>
     </div>
   </div>
@@ -395,7 +399,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04b</span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -1770,6 +1774,7 @@ function exportAllData(){
     )
   };
   if(tasksEdited) data.tasks = TASKS;
+  if(boxHistory.length) data.boxHistory = boxHistory;
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1885,6 +1890,7 @@ function importAllData(input){
       // 復元（ボックスは pStates より先に戻す）
       if(Array.isArray(data.tasks)){ renameOldGroups(data.tasks); TASKS.splice(0, TASKS.length, ...data.tasks); tasksEdited = true; }
       props.splice(0, props.length, ...(data.props||[]));
+      if(Array.isArray(data.boxHistory)) boxHistory = data.boxHistory;
       if(data.nextPid) nextPid = data.nextPid;
       if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
       if(data.tantoMap) Object.assign(tantoMap, data.tantoMap);
@@ -1987,6 +1993,54 @@ function deleteProp(pid){
   scheduleSave();
 }
 
+// ===== ボックス管理の更新履歴 =====
+// TEMPLATE_HISTORY：アプリに組み込んだテンプレートの更新（配布のたびに追記する）。boxHistory：この端末でボックス管理から行った変更（保存する）
+const TEMPLATE_HISTORY = [
+  {at:'2026-11-03', type:'テンプレート', text:'重複していた148「着工~監査①」・149「監査①~監査②」（144・145と同じ）を削除し、150以降を2つ詰めて182ボックスに'},
+  {at:'2026-11-03', type:'テンプレート', text:'ドライブの「注文住宅 タスク管理表」に合わせて、145・147・176ほかのタスク、116のフェーズ、カテゴリーなどを更新'},
+  {at:'2026-11-04', type:'テンプレート', text:'148「上棟案内」に、ゲートから期日が付くように'},
+  {at:'2026-11-04', type:'テンプレート', text:'フェーズ名「引渡し」を「引渡前」に変更'},
+  {at:'2026-11-04', type:'テンプレート', text:'38「実行予算」（116と重複）を「原価管理」（146タスク）に差し替え'},
+];
+let boxHistory = [];
+function addBoxHistory(type, no, name, detail){
+  boxHistory.push({at:new Date().toISOString(), type, no, name, detail:detail||''});
+  if(boxHistory.length>300) boxHistory.splice(0, boxHistory.length-300);
+}
+// 編集前後のボックスを比べて、変わったところを短い文にする
+function describeBoxChange(before, after, oiList){
+  const out=[];
+  if(before.no!==after.no) out.push('番号 '+before.no+'→'+after.no);
+  if(before.name!==after.name) out.push('名前「'+before.name+'」→「'+after.name+'」');
+  if((before.group||'')!==(after.group||'')) out.push('フェーズ '+(before.group||'―')+'→'+(after.group||'―'));
+  if((before.category||'')!==(after.category||'')) out.push('カテゴリ '+(before.category||'―')+'→'+(after.category||'―'));
+  const added=oiList.filter(oi=>oi===undefined).length;
+  const removed=before.items.length-oiList.filter(oi=>oi!==undefined).length;
+  const changed=oiList.filter((oi,ni)=>oi!==undefined && (before.items[oi].t!==after.items[ni].t || (before.items[oi].n||'')!==(after.items[ni].n||'') || (before.items[oi].r||'')!==(after.items[ni].r||''))).length;
+  const moved=oiList.filter(oi=>oi!==undefined).some((oi,k,a)=>k>0 && oi<a[k-1]);
+  if(added) out.push('タスク追加 '+added+'件');
+  if(removed) out.push('タスク削除 '+removed+'件');
+  if(changed) out.push('タスク変更 '+changed+'件');
+  if(moved) out.push('並び替え');
+  return out.join('、')||'変更なし';
+}
+function renderBoxHistory(){
+  const list=document.getElementById('boxHistoryList');
+  if(!list) return;
+  // 新しい順。同じ日時のものは、後に足したものを上に
+  const rows=boxHistory.map((h,i)=>({at:h.at, type:h.type, i, text:'No.'+h.no+'「'+h.name+'」'+(h.detail?'：'+h.detail:'')}))
+    .concat(TEMPLATE_HISTORY.map((h,i)=>Object.assign({i},h)))
+    .sort((a,b)=>a.at<b.at?1:a.at>b.at?-1:b.i-a.i);
+  document.getElementById('boxHistoryCount').textContent='（'+rows.length+'件）';
+  const fmt=at=>at.length>10?new Date(at).toLocaleString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):at.replace(/-/g,'/');
+  const col={'追加':'#3B6D11','編集':'#185FA5','削除':'#A32D2D','テンプレート':'#666'};
+  list.innerHTML=rows.length?rows.map(r=>'<div class="box-hist-row" style="display:flex;gap:8px;padding:5px 0;border-top:.5px solid var(--color-border-tertiary,#eee);font-size:12px;line-height:1.5">'
+    +'<span style="white-space:nowrap;color:var(--color-text-secondary,#666);min-width:108px">'+fmt(r.at)+'</span>'
+    +'<span style="white-space:nowrap;font-weight:600;color:'+(col[r.type]||'#666')+';min-width:64px">'+(r.type==='テンプレート'?'テンプレート更新':r.type)+'</span>'
+    +'<span>'+r.text.replace(/</g,'&lt;')+'</span></div>').join('')
+    :'<div style="font-size:12px;color:var(--color-text-tertiary,#999)">履歴はありません</div>';
+}
+
 let tasksEdited = false; // ボックス管理で編集したら true。true のときだけ TASKS を保存する（未編集ならテンプレートの更新がそのまま届く）
 let editingTaskNo = null; // 編集中のタスクNo（nullなら新規）
 let tempItems = []; // 編集中のチェック項目
@@ -1994,6 +2048,7 @@ let tempItems = []; // 編集中のチェック項目
 const GROUPS_ADMIN = ['プラン確定','完成宅地','図書','構造','確認','着工前工務業務','着工後','上棟後','引渡前','引渡後'];
 
 function renderTaskEditList(){
+  renderBoxHistory();
   const body = document.getElementById('taskEditList');
   if(!body) return;
   const q = (document.getElementById('taskSearchAdmin')||{}).value||'';
@@ -2136,6 +2191,7 @@ function saveTaskEdit(){
     // 新規追加
     if(TASKS.find(t=>t.no===no)){alert('No '+no+' はすでに存在します');return;}
     TASKS.push({no,name,group,category,tanto:'',due:'',state:'着手前',help:0,offset:null,items});
+    addBoxHistory('追加', no, name, 'タスク '+items.length+'件');
     // 全物件のpStatesに追加
     props.forEach(p=>{
       if(!pStates[p.id]) return;
@@ -2153,7 +2209,10 @@ function saveTaskEdit(){
       // 消したタスクに添付があれば確認する
       const lostLinks = TASKS[idx].items.reduce((n,_,k)=>n+(oiList.includes(k)?0:((taskLinks[getLinkKey(oldNo,k)]||[]).length)),0);
       if(lostLinks && !confirm('削除するタスクに添付が'+lostLinks+'件あります。添付も削除されます。よいですか？')) return;
+      const beforeBox = TASKS[idx];
       TASKS[idx]={...TASKS[idx],no,name,group,category,items};
+      const detail = describeBoxChange(beforeBox, TASKS[idx], oiList);
+      if(detail!=='変更なし') addBoxHistory('編集', no, name, detail);
       // 添付（全物件共通）を新しい位置へ移す
       const oldLinks = {};
       Object.keys(taskLinks).forEach(k=>{ if(k.startsWith(oldNo+'_')){ oldLinks[k]=taskLinks[k]; delete taskLinks[k]; } });
@@ -2205,7 +2264,7 @@ function saveTaskEdit(){
 function deleteTask(no){
   if(!confirm('No.'+no+' を削除してもよいですか？\nこの操作は元に戻せません。')) return;
   const idx = TASKS.findIndex(t=>t.no===no);
-  if(idx>=0) TASKS.splice(idx,1);
+  if(idx>=0){ addBoxHistory('削除', no, TASKS[idx].name, 'タスク '+TASKS[idx].items.length+'件'); TASKS.splice(idx,1); }
   // 同じ番号で新しく作ったボックスに古い添付が付かないよう、添付も消す
   Object.keys(taskLinks).forEach(k=>{ if(k.startsWith(no+'_')) delete taskLinks[k]; });
   tasksEdited = true;
@@ -2233,6 +2292,7 @@ function saveData(){
       )
     };
     if(tasksEdited) data.tasks = TASKS;
+    if(boxHistory.length) data.boxHistory = boxHistory;
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){console.warn('保存失敗:',e);}
 }
@@ -2301,6 +2361,7 @@ function loadData(){
     if(Array.isArray(data.tasks)){ renameOldGroups(data.tasks); TASKS.splice(0, TASKS.length, ...data.tasks); tasksEdited = true; }
     if(data.props) props.splice(0, props.length, ...data.props);
     if(data.nextPid) nextPid = data.nextPid;
+    if(Array.isArray(data.boxHistory)) boxHistory = data.boxHistory;
     if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
     if(data.taskLinks) Object.assign(taskLinks, data.taskLinks);
     if(data.tantoMap) Object.assign(tantoMap, data.tantoMap);
