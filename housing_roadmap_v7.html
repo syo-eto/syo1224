@@ -399,7 +399,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04b</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04c</span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -2018,7 +2018,10 @@ function describeBoxChange(before, after, oiList){
   const removed=before.items.length-oiList.filter(oi=>oi!==undefined).length;
   const changed=oiList.filter((oi,ni)=>oi!==undefined && (before.items[oi].t!==after.items[ni].t || (before.items[oi].n||'')!==(after.items[ni].n||'') || (before.items[oi].r||'')!==(after.items[ni].r||''))).length;
   const moved=oiList.filter(oi=>oi!==undefined).some((oi,k,a)=>k>0 && oi<a[k-1]);
-  if(added) out.push('タスク追加 '+added+'件');
+  if(added){
+    const why=after.items.filter((_,ni)=>oiList[ni]===undefined).map(it=>'「'+it.t+'」'+(it.why?'（理由：'+it.why+'）':'')).join(' ');
+    out.push('タスク追加 '+added+'件 '+why);
+  }
   if(removed) out.push('タスク削除 '+removed+'件');
   if(changed) out.push('タスク変更 '+changed+'件');
   if(moved) out.push('並び替え');
@@ -2164,6 +2167,10 @@ function renderTempItems(){
         +'<div style="display:flex;flex-direction:column;gap:3px">'
           +'<input class="te-item-input" type="text" value="'+item.t.replace(/"/g,'&quot;')+'" placeholder="タスクのテキストを入力" oninput="tempItems['+i+'].t=this.value">'
           +'<input class="te-note-input" type="text" value="'+(item.n||'').replace(/"/g,'&quot;')+'" placeholder="補足メモ（任意）" oninput="tempItems['+i+'].n=this.value">'
+          // 追加理由：ボックス管理の中だけで使う（各物件のチェック画面には出さない）。新しく足すタスクで入力し、保存後は表示のみ
+          +(item._oi===undefined
+            ?'<input class="te-why-input" type="text" value="'+(item.why||'').replace(/"/g,'&quot;')+'" placeholder="追加理由（各物件の画面には出ません）" oninput="tempItems['+i+'].why=this.value" style="font-size:12px;padding:4px 8px;border:.5px solid #E8D27A;border-radius:6px;background:#FFFBEA;color:var(--color-text-primary,#1a1a1a)">'
+            :(item.why?'<div class="te-why-text" style="font-size:11px;color:#8A6D00">追加理由：'+String(item.why).replace(/</g,'&lt;')+'</div>':''))
         +'</div>'
         +'<select oninput="tempItems['+i+'].r=this.value" style="font-size:12px;padding:4px 6px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:6px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)">'
           +'<option value="">担当―</option>'
@@ -2185,13 +2192,13 @@ function saveTaskEdit(){
   const category = document.getElementById('teTaskCat').value;
   const kept = tempItems.filter(i=>i.t.trim());
   const oiList = kept.map(i=>i._oi); // 新しい位置 → 編集前の位置（新規は undefined）
-  const items = kept.map(({_oi,...i})=>i);
+  const items = kept.map(({_oi,...i})=>{ i.why=(i.why||'').trim(); if(!i.why) delete i.why; return i; });
 
   if(editingTaskNo===null){
     // 新規追加
     if(TASKS.find(t=>t.no===no)){alert('No '+no+' はすでに存在します');return;}
     TASKS.push({no,name,group,category,tanto:'',due:'',state:'着手前',help:0,offset:null,items});
-    addBoxHistory('追加', no, name, 'タスク '+items.length+'件');
+    addBoxHistory('追加', no, name, 'タスク '+items.length+'件'+items.filter(it=>it.why).map(it=>' 「'+it.t+'」（理由：'+it.why+'）').join(''));
     // 全物件のpStatesに追加
     props.forEach(p=>{
       if(!pStates[p.id]) return;

@@ -7,7 +7,7 @@
 ## 進め方
 
 - 初回のみ `npm install`。
-- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで38項目の操作を実行）を通す。
+- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで39項目の操作を実行）を通す。
 - 構文が通っても画面が崩れることがある（過去に何度かあった）。画面に関わる変更は、`tests/smoke.test.js` にその操作を足してから直す。
 - ファイルが大きい（`TASKS` の182ボックスが1行に入っている）。全体を読み込まず、`grep -n` と `sed -n` で必要な箇所だけ見る。
 - 変更は小さく、1つずつ動作確認する。利用者は変更のたびにファイルを開いて確認する。
@@ -37,7 +37,7 @@
 ## データモデル
 
 - `TASKS`：ボックスの配列。`{no, name, group, category, tanto, due, state, help, offset, items}`。
-  `items` がボックス内のタスクで、各要素は `{t:文言, c:完了, f:不要, h:HELP, hm:HELPメモ, n:補足メモ, r:担当職種, j:未使用（空）}`。
+  `items` がボックス内のタスクで、各要素は `{t:文言, c:完了, f:不要, h:HELP, hm:HELPメモ, n:補足メモ, r:担当職種, j:未使用（空）, why:追加理由（任意）}`。`why` はボックス管理で新しく足したタスクにだけ入力欄を出し、保存後は編集画面と更新履歴にだけ表示する（各物件のチェック画面には出さない）。
 - `pStates[pid]` = `{ts, done, fuyo, help, memo, overrideDue}`。`ts[no]` がボックスの状態（着手前・進行中・完了）、`done/fuyo/help[no]` がタスクごとの真偽の配列。
 - `tantoMap[pid][職種]` = 担当者名。`gateDates[pid][ゲート名]` = `YYYY-MM-DD`。
 - `kanryoDates['pid_no']`、`itemCheckDates['pid_no_idx']`、`taskLinks['no_idx']`（添付は全物件共通）。

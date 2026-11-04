@@ -288,6 +288,33 @@ run('ボックス管理の更新履歴', () => {
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
   if(w12.eval('boxHistory.length')!==3) throw new Error('再読み込みで履歴が消えた');
 });
+run('タスク追加の追加理由（ボックス管理だけに出る）', () => {
+  const w13 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  const d13 = w13.document; w13.confirm = () => true;
+  w13.openAddDlg(); d13.getElementById('fName').value='理由邸'; w13.addProperty();
+  w13.goToAdmin(); w13.switchAdminTab('task');
+  w13.openEditTaskDlg(3);
+  if(d13.querySelectorAll('#teItemList .te-why-input').length!==0) throw new Error('既存のタスクに追加理由の欄が出ている');
+  w13.addCheckItem();
+  const inputs = d13.querySelectorAll('#teItemList .te-why-input');
+  if(inputs.length!==1) throw new Error('新しいタスクに追加理由の欄が無い');
+  w13.eval('tempItems[tempItems.length-1].t="理由つきタスク"');
+  inputs[0].value='監査で指摘されたため'; inputs[0].dispatchEvent(new w13.Event('input'));
+  w13.saveTaskEdit();
+  const it = w13.eval('TASKS.find(t=>t.no===3).items.slice(-1)[0]');
+  if(it.why!=='監査で指摘されたため') throw new Error('追加理由が保存されない');
+  if(!w13.eval('boxHistory.slice(-1)[0].detail').includes('理由：監査で指摘されたため')) throw new Error('履歴に理由が無い');
+  // 開き直すと表示だけ
+  w13.openEditTaskDlg(3);
+  if(!d13.getElementById('teItemList').textContent.includes('追加理由：監査で指摘されたため')) throw new Error('編集画面に理由が出ない');
+  w13.closeOv('taskEditDlgOv');
+  // 物件のチェック画面には出ない
+  w13.openProp(w13.eval('props[0].id')); w13.openModal(3);
+  const body = d13.getElementById('mBody').textContent;
+  if(!body.includes('理由つきタスク')) throw new Error('タスクが物件に出ない');
+  if(body.includes('監査で指摘されたため')) throw new Error('追加理由が物件の画面に出ている');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};
