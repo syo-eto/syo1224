@@ -7,7 +7,7 @@
 ## 進め方
 
 - 初回のみ `npm install`。
-- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで36項目の操作を実行）を通す。
+- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで37項目の操作を実行）を通す。
 - 構文が通っても画面が崩れることがある（過去に何度かあった）。画面に関わる変更は、`tests/smoke.test.js` にその操作を足してから直す。
 - ファイルが大きい（`TASKS` の182ボックスが1行に入っている）。全体を読み込まず、`grep -n` と `sed -n` で必要な箇所だけ見る。
 - 変更は小さく、1つずつ動作確認する。利用者は変更のたびにファイルを開いて確認する。
@@ -40,7 +40,7 @@
 - `pStates[pid]` = `{ts, done, fuyo, help, memo, overrideDue}`。`ts[no]` がボックスの状態（着手前・進行中・完了）、`done/fuyo/help[no]` がタスクごとの真偽の配列。
 - `tantoMap[pid][職種]` = 担当者名。`gateDates[pid][ゲート名]` = `YYYY-MM-DD`。
 - `kanryoDates['pid_no']`、`itemCheckDates['pid_no_idx']`、`taskLinks['no_idx']`（添付は全物件共通）。
-- 進捗は2種類ある。ボックス単位（`phasePct`）は「状態が完了のボックス数 ÷ フェーズ内のボックス数」。タスク単位（`calcProg`）は「完了数 ÷ 不要でないタスク数」。
+- 進捗は2種類ある。ボックス単位（`phasePct` `overallPct`）は「状態が完了のボックス数 ÷ フェーズ内のボックス数」で、全タスクが不要のボックス（`isBoxFuyo`）は分母にも分子にも数えない。フェーズの全ボックスが不要なら100%。タスク単位（`calcProg`）は「完了数 ÷ 不要でないタスク数」。
 
 ## 守るべき仕様
 

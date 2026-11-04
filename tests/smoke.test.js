@@ -231,6 +231,28 @@ run('埋め込んだドライブのデータを起動時に一度だけ取り込
   if(b.eval('props.length')!==2) throw new Error('二重に取り込んだ');
   if(b.document.getElementById('seedNotice').style.display!=='none') throw new Error('二回目もお知らせが出る');
 });
+run('不要のボックスは、フェーズの％に数えない', () => {
+  const w10 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  w10.openAddDlg(); w10.document.getElementById('fName').value='不要邸'; w10.addProperty();
+  const pid = w10.eval('props[0].id');
+  w10.openProp(pid);
+  const nos = w10.eval('TASKS.filter(t=>PCOLS[0].g.includes(t.group)&&t.items.length).map(t=>t.no)');
+  const n = w10.eval('TASKS.filter(t=>PCOLS[0].g.includes(t.group)).length');
+  // 1つを一括不要、1つを完了にする
+  w10.openModal(nos[0]); w10.bulkFuyo();
+  w10.openModal(nos[1]); w10.eval('TASKS.find(t=>t.no==='+nos[1]+').items').forEach((_,i)=>w10.toggleDone(nos[1],i,true));
+  const r = w10.eval('phasePct('+pid+',0)');
+  if(r.total!==n-1 || r.done!==1) throw new Error('分母 '+r.total+'（期待 '+(n-1)+'）・分子 '+r.done);
+  if(r.pct!==Math.round(1/(n-1)*100)) throw new Error('％ '+r.pct);
+  // 物件一覧のプラン確定の％にも反映
+  w10.goToList(); w10.renderPropList();
+  if(!w10.document.getElementById('propTbody').textContent.includes(r.pct+'%')) throw new Error('一覧の％');
+  // 全ボックスが不要のフェーズは100%（済み）
+  w10.eval('TASKS.filter(t=>PCOLS[0].g.includes(t.group)).forEach(t=>{pStates['+pid+'].fuyo[t.no]=t.items.length?t.items.map(()=>true):[]; pStates['+pid+'].ts[t.no]="完了";})');
+  const r2 = w10.eval('phasePct('+pid+',0)');
+  if(r2.pct!==100) throw new Error('全不要（タスクの無いボックスは完了）で100%にならない '+JSON.stringify(r2));
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};

@@ -743,9 +743,16 @@ function openOv(id){document.getElementById(id).classList.add('open');}
 function closeOv(id){document.getElementById(id).classList.remove('open');}
 
 // ===== フェーズ進捗計算 =====
+// 全タスクが不要のボックス（一括不要など）は、ボックス単位の％の分母にも分子にも数えない
+function isBoxFuyo(pid,no){
+  const f=pStates[pid]&&pStates[pid].fuyo[no];
+  return !!(f&&f.length&&f.every(Boolean));
+}
 function phasePct(pid,pIdx){
-  const nos=TASKS.filter(t=>PCOLS[pIdx].g.includes(t.group)).map(t=>t.no);
-  if(!nos.length)return{pct:0,done:0,total:0};
+  const all=TASKS.filter(t=>PCOLS[pIdx].g.includes(t.group)).map(t=>t.no);
+  if(!all.length)return{pct:0,done:0,total:0};
+  const nos=all.filter(no=>!isBoxFuyo(pid,no));
+  if(!nos.length)return{pct:100,done:0,total:0}; // フェーズの全ボックスが不要なら済み扱い
   const done=nos.filter(no=>pStates[pid].ts[no]==='完了').length;
   return{pct:Math.round(done/nos.length*100),done,total:nos.length};
 }
@@ -770,8 +777,10 @@ function calcPropStatus(pid){
 function getPropStatus(p){ return calcPropStatus(p.id); }
 
 function overallPct(pid){
-  const done=TASKS.filter(t=>pStates[pid].ts[t.no]==='完了').length;
-  return Math.round(done/TASKS.length*100);
+  const nos=TASKS.filter(t=>!isBoxFuyo(pid,t.no));
+  if(!nos.length) return 100;
+  const done=nos.filter(t=>pStates[pid].ts[t.no]==='完了').length;
+  return Math.round(done/nos.length*100);
 }
 function currentPhase(pid){
   for(let i=0;i<PCOLS.length;i++){
@@ -1237,7 +1246,7 @@ function render(){
   const wipN=TASKS.filter(t=>ts[t.no]==='進行中').length;
   const todoN=TASKS.filter(t=>ts[t.no]==='着手前').length;
   const helpN=TASKS.filter(t=>help[t.no]&&help[t.no].some(Boolean)).length;
-  const pct=Math.round(doneN/total*100);
+  const pct=overallPct(curPid); // 不要のボックスは数えない
   const ov=overdueCount(curPid);
   document.getElementById('pbar').style.width=pct+'%';
   document.getElementById('stats').innerHTML=
@@ -1940,8 +1949,7 @@ function renderPropAdminList(){
   else if(sf==='name') list.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
   body.innerHTML='<div style="border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:8px;overflow:hidden">'
     +list.map((p,i)=>{
-      const done=TASKS.filter(t=>pStates[p.id]&&pStates[p.id].ts[t.no]==='完了').length;
-      const pct=Math.round(done/TASKS.length*100);
+      const pct=pStates[p.id]?overallPct(p.id):0;
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;'+(i>0?'border-top:.5px solid var(--color-border-tertiary,#e5e5e5)':'')+'">'
         +'<div>'
           +'<div style="font-size:14px;font-weight:600">🏠 '+p.name+'</div>'
