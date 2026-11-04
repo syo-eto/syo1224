@@ -319,6 +319,12 @@ run('タスク追加の追加理由（ボックス管理と💡だけに出る�
   if(tips.length!==1 || tips[0].getAttribute('data-tip')!=='追加理由：監査で指摘されたため') throw new Error('💡の理由');
   if(!tips[0].closest('.cl-item').textContent.includes('理由つきタスク')) throw new Error('💡が別のタスクに付いている');
 });
+run('アプリの版（表示・package.json と一致）', () => {
+  const v = w.eval('APP_VERSION');
+  const pkg = JSON.parse(require('fs').readFileSync(__dirname+'/../package.json','utf8'));
+  if(pkg.version!==v) throw new Error('package.json '+pkg.version+' ≠ '+v);
+  if(!d.getElementById('appVersion').textContent.includes('v'+v)) throw new Error('見出しの版の表示');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};

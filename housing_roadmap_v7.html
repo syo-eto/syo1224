@@ -404,7 +404,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04f</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.1.0（2026-11-04）</span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -1769,7 +1769,7 @@ function openPropAndModal(pid, taskNo){
 // ===== データエクスポート・インポート =====
 function exportAllData(){
   const data = {
-    version: 'v7', boxNoVer: BOX_NO_VER,
+    version: 'v7', appVersion: APP_VERSION, boxNoVer: BOX_NO_VER,
     exportedAt: new Date().toISOString(),
     props, nextPid, staffList,
     tantoMap, gateDates, kanryoDates, itemCheckDates,
@@ -1999,6 +1999,9 @@ function deleteProp(pid){
   renderPropAdminList();
   scheduleSave();
 }
+
+// アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
+const APP_VERSION = '0.1.0';
 
 // ===== ボックス管理の更新履歴 =====
 // TEMPLATE_HISTORY：アプリに組み込んだテンプレートの更新（配布のたびに追記する）。boxHistory：この端末でボックス管理から行った変更（保存する）
