@@ -191,6 +191,25 @@ run('物件の追加取り込み：今の物件を残し、同名は置き換え
   w8.renderPropList();
   if(!d8.getElementById('propTbody').textContent.includes('取込邸')) throw new Error('一覧に出ない');
 });
+run('38 実行予算 → 原価管理：保存データを差し替える', () => {
+  const tpl = w.eval('JSON.parse(JSON.stringify(TASKS))');
+  const old38 = Object.assign({}, tpl.find(t=>t.no===116), {no:38, group:'完成宅地'});
+  const tasks = tpl.map(t=>t.no===38?old38:t);
+  const st = {ts:{'38':'進行中','39':'完了'}, done:{'38':Array(50).fill(true),'39':[true]}, fuyo:{'38':Array(50).fill(false)}, help:{}, memo:{}, overrideDue:{'38':'2026-12-01'}};
+  const data = {boxNoVer:2, props:[{id:1,name:'旧邸'}], nextPid:2, tasks, pStates:{1:st},
+    itemCheckDates:{'1_38_0':'2026-10-01','1_39_0':'2026-10-02'}, taskLinks:{'38_0':[{title:'x',url:'https://x'}],'39_0':[{title:'y',url:'https://y'}]}};
+  const w9 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  const T = w9.eval('TASKS'), b38 = T.find(t=>t.no===38);
+  if(b38.name!=='原価管理' || b38.items.length!==146) throw new Error('保存したボックス一覧の38が差し替わらない');
+  if(w9.eval('pStates[1].done[38].length')!==146 || w9.eval('pStates[1].done[38].some(Boolean)')) throw new Error('38のチェックが作り直されていない');
+  if(w9.eval('pStates[1].ts[38]')!=='進行中' || w9.eval('pStates[1].overrideDue[38]')!=='2026-12-01') throw new Error('38の状態・期日が消えた');
+  if(w9.eval('pStates[1].done[39][0]')!==true) throw new Error('他のボックスのチェックが消えた');
+  if(w9.eval('itemCheckDates["1_38_0"]') || !w9.eval('itemCheckDates["1_39_0"]')) throw new Error('チェック日');
+  if(w9.eval('taskLinks["38_0"]') || !w9.eval('taskLinks["39_0"]')) throw new Error('添付');
+  w9.openProp(1); w9.openModal(38);
+  if(!w9.document.body.textContent.includes('原価管理表のスプレットシート')) throw new Error('38の中身が表示されない');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};
@@ -213,6 +232,7 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   const gates = Object.fromEntries(w3.eval('GATES').map(g=>[g.name,g.no]));
   ['上棟','木完','工務社検','引渡'].forEach(n=>{ if(box(gates[n]).name!==n) throw new Error('ゲート「'+n+'」の番号がずれた'); });
   if(box(116).group!=='着工前工務業務') throw new Error('116のフェーズ');
+  if(box(38).name!=='原価管理' || box(38).items.length!==146 || box(116).name!=='実行予算') throw new Error('38 原価管理（実行予算の重複の修正）');
   if(T.some(t=>t.group==='引渡し') || box(176).group!=='引渡前') throw new Error('フェーズ「引渡し」が「引渡前」になっていない');
   // 着工後フェーズのボックスを開いて表示できる
   w3.openAddDlg(); w3.document.getElementById('fName').value='テンプレ邸'; w3.addProperty();
@@ -255,7 +275,7 @@ run('旧番号の保存データを新番号へ移す', () => {
   // 保存し直しても、もう一度ずらさない
   w4.saveData();
   const saved = w4.localStorage.getItem('housing_roadmap_v7');
-  if(JSON.parse(saved).boxNoVer!==2) throw new Error('boxNoVer が保存されていない');
+  if(JSON.parse(saved).boxNoVer!==3) throw new Error('boxNoVer が保存されていない');
   const w5 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
   checkMigrated(w5, '再読み込み');

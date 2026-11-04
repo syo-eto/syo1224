@@ -1,6 +1,6 @@
 # ドライブの各物件「タスク管理表」(xlsx) から、アプリの「物件を追加で取り込む」用の JSON を作る。
 # 使い方：python3 -I tools/drive_to_import.py <作業フォルダ> <出力.json> <1_邸名.xlsx> ...
-#   作業フォルダに conv/app.json（アプリの TASKS・staffList を書き出したもの）と drive2/dashboard.xlsx を置く。
+#   作業フォルダに conv/app.json（アプリの TASKS・staffList を書き出したもの）と drive3/dashboard.xlsx を置く。
 #   xlsx のファイル名は「連番_邸名.xlsx」。邸名でダッシュボードの行を探し、住所を取る。
 # 規則は CLAUDE.md の「ドライブからの物件の取り込み」を参照。
 import sys,json,re,datetime as dt,pandas as pd
@@ -35,8 +35,8 @@ APP={}
 for t in app['tasks']: APP.setdefault(norm(t['name']),[]).append(t)
 STAT={'完了':'完了','作業中':'進行中','進行中':'進行中','着手前':'着手前'}
 CATS=['企画','企画補助','建築家','設計チェック','構造','設計作図','IC','申請','基礎監督','現場監督','工務補助','監査','技術']
-res={'version':'7','boxNoVer':2,'exportedAt':dt.datetime.now().isoformat(),'props':[],'pStates':{},'tantoMap':{},'gateDates':{},'kanryoDates':{},'itemCheckDates':{},'staffList':[]}
-dash=pd.read_excel(S+'/drive2/dashboard.xlsx',sheet_name='新築・フルリノベ',header=None)
+res={'version':'7','boxNoVer':3,'exportedAt':dt.datetime.now().isoformat(),'props':[],'pStates':{},'tantoMap':{},'gateDates':{},'kanryoDates':{},'itemCheckDates':{},'staffList':[]}
+dash=pd.read_excel(S+'/drive3/dashboard.xlsx',sheet_name='新築・フルリノベ',header=None)
 A=[str(v).strip() if not isna(v) else '' for v in dash[0]]
 report=[]
 import os
@@ -65,11 +65,15 @@ for pid,f in enumerate(files,1):
     CS,CD,CK=BH.index('状態'),BH.index('期日'),BH.index('完了実績')
     b=W['ボックス一覧'].iloc[2:].copy(); b[0]=b[0].ffill()
     seen=set(); miss=[]; itemsMiss=0; itemsHit=0
+    nJikko=sum(1 for v in b[3] if norm(v)=='実行予算')
     for _,row in b.iterrows():
         st=row[CS]
         if isna(row[3]) and (isna(st) or str(st).strip() not in STAT): continue
         if isna(st) or str(st).strip() not in STAT: st='着手前'
         nm=row[3] if not isna(row[3]) else row[2]
+        # 「実行予算」が2行ある表（新しい形式）は、1行目がテンプレートで「原価管理」に改めたボックス（アプリの38）。
+        # 1行だけの古い形式は、中身が同じアプリの116「実行予算」に当てる
+        if norm(nm)=='実行予算' and nJikko>=2 and 38 not in seen: nm='原価管理'
         cand=APP.get(norm(nm))
         if not cand: miss.append(norm(nm)); continue
         t=next((c for c in cand if c['no'] not in seen and str(row[0]).strip()==c.get('group')),None) or next((c for c in cand if c['no'] not in seen),cand[0])
