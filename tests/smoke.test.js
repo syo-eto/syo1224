@@ -154,6 +154,37 @@ run('保存したボックス一覧のフェーズ「引渡し」も「引渡前
   if(!T.some(t=>t.group==='引渡前')) throw new Error('引渡前が無い');
   if(!w7.document.getElementById('propList') && !w7.document.body.innerHTML.includes('>引渡前</th>')) throw new Error('物件一覧の見出し');
 });
+run('物件の追加取り込み：今の物件を残し、同名は置き換える', () => {
+  const w8 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  const d8 = w8.document;
+  d8.getElementById('fName') ; w8.openAddDlg(); d8.getElementById('fName').value='あああああ'; w8.addProperty();
+  const keepId = w8.eval('props[0].id');
+  w8.openProp(keepId); w8.openModal(2); w8.toggleDone(2,0,true);
+  const file = {version:'7', boxNoVer:2, props:[{id:7,name:'取込邸',addr:'大分市',tanto:'',date:'',ki:'',status:''}],
+    pStates:{7:{ts:{'1':'完了','5':'進行中'}, done:{'5':[true,false]}, fuyo:{}, help:{}, memo:{}, overrideDue:{}}},
+    tantoMap:{7:{'企画':'新しい人'}}, gateDates:{7:{'キックオフ':'2026-01-10'}}, kanryoDates:{'7_1':'2026-02-01'}, itemCheckDates:{'7_5_0':'2026-02-02'}, staffList:['新しい人']};
+  let r = w8.mergeImportData(JSON.parse(JSON.stringify(file)));
+  if(r.added.length!==1) throw new Error('追加されない');
+  const P = w8.eval('props');
+  if(P.length!==2 || !P.find(p=>p.name==='あああああ')) throw new Error('今の物件が消えた');
+  if(w8.eval('pStates['+keepId+'].done[2][0]')!==true) throw new Error('今の物件のチェックが消えた');
+  const nid = P.find(p=>p.name==='取込邸').id;
+  if(nid===keepId) throw new Error('番号が重なった');
+  if(w8.eval('pStates['+nid+'].ts[1]')!=='完了' || w8.eval('pStates['+nid+'].done[5][0]')!==true) throw new Error('進捗が入っていない');
+  if(w8.eval('pStates['+nid+'].ts[100]')!=='着手前') throw new Error('ファイルに無いボックスが初期化されていない');
+  if(w8.eval('kanryoDates["'+nid+'_1"]')!=='2026-02-01' || w8.eval('itemCheckDates["'+nid+'_5_0"]')!=='2026-02-02') throw new Error('日付が移っていない');
+  if(w8.eval('tantoMap['+nid+']["企画"]')!=='新しい人' || !w8.eval('staffList').includes('新しい人')) throw new Error('担当者');
+  if(w8.eval('gateDates['+nid+']["キックオフ"]')!=='2026-01-10') throw new Error('ゲート');
+  // もう一度取り込むと、同名の物件を置き換える（増えない）
+  file.pStates[7].ts['1']='着手前'; file.kanryoDates={};
+  r = w8.mergeImportData(JSON.parse(JSON.stringify(file)));
+  if(r.updated.length!==1 || w8.eval('props.length')!==2) throw new Error('同名が置き換わらない');
+  if(w8.eval('pStates['+nid+'].ts[1]')!=='着手前' || w8.eval('kanryoDates["'+nid+'_1"]')) throw new Error('置き換え後の内容');
+  // 物件一覧に出る
+  w8.renderPropList();
+  if(!d8.getElementById('propTbody').textContent.includes('取込邸')) throw new Error('一覧に出ない');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};

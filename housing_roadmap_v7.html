@@ -371,6 +371,15 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
         </div>
       </div>
       <div id="importResult" style="margin-top:.75rem;font-size:13px"></div>
+      <div style="font-size:13px;color:var(--color-text-secondary,#666);margin:1.25rem 0 .75rem;line-height:1.7">
+        <b>物件を追加で取り込む</b>：今ある物件はそのまま残し、ファイル内の物件だけを追加します。<br>
+        同じ名前の物件がすでにあるときは、その物件の進捗・担当者・ゲートをファイルの内容に置き換えます。
+      </div>
+      <div style="position:relative">
+        <button class="btn btn-cancel" style="border:.5px solid var(--color-border-secondary,#d0d0d0)" onclick="document.getElementById('mergeFileInput').click()">➕ 物件を追加で取り込む</button>
+        <input type="file" id="mergeFileInput" accept=".json" style="display:none" onchange="mergeImportFile(this)">
+      </div>
+      <div id="mergeResult" style="margin-top:.75rem;font-size:13px"></div>
     </div>
   </div>
 </div>
@@ -1753,6 +1762,67 @@ function exportAllData(){
   a.download = `housing_roadmap_backup_${dateStr}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ===== 物件の追加取り込み（今の物件は残す）=====
+// data：エクスポートと同じ形（props・pStates・tantoMap・gateDates・kanryoDates・itemCheckDates）。ボックス一覧と添付は取り込まない
+function mergeImportData(data){
+  data = migrateBoxNos(data);
+  const res = {added:[], updated:[]};
+  (data.props||[]).forEach(src=>{
+    const old = src.id;
+    let dst = props.find(p=>p.name===src.name);
+    let pid;
+    if(dst){
+      pid = dst.id;
+      Object.assign(dst, src, {id:pid});
+      res.updated.push(src.name);
+      // 置き換える物件の完了日・チェック日を消す
+      Object.keys(kanryoDates).forEach(k=>{ if(k.startsWith(pid+'_')) delete kanryoDates[k]; });
+      Object.keys(itemCheckDates).forEach(k=>{ if(k.startsWith(pid+'_')) delete itemCheckDates[k]; });
+    } else {
+      pid = nextPid++;
+      props.push(Object.assign({}, src, {id:pid}));
+      res.added.push(src.name);
+    }
+    initPState(pid);
+    const s = data.pStates && data.pStates[old];
+    if(s){
+      ['ts','fuyo','done','help','memo','overrideDue'].forEach(f=>{
+        Object.entries(s[f]||{}).forEach(([no,v])=>{ if(f==='ts'||f==='overrideDue'||TASKS.some(t=>t.no===Number(no))) pStates[pid][f][no]=v; });
+      });
+    }
+    tantoMap[pid] = Object.assign({}, (data.tantoMap||{})[old]||{});
+    gateDates[pid] = Object.assign({}, (data.gateDates||{})[old]||{});
+    const pre = old+'_';
+    Object.entries(data.kanryoDates||{}).forEach(([k,v])=>{ if(k.startsWith(pre)) kanryoDates[pid+'_'+k.slice(pre.length)]=v; });
+    Object.entries(data.itemCheckDates||{}).forEach(([k,v])=>{ if(k.startsWith(pre)) itemCheckDates[pid+'_'+k.slice(pre.length)]=v; });
+  });
+  (data.staffList||[]).forEach(n=>{ if(n && !staffList.includes(n)) staffList.push(n); });
+  saveData();
+  return res;
+}
+function mergeImportFile(input){
+  const file = input.files[0];
+  if(!file) return;
+  const out = document.getElementById('mergeResult');
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.props || !data.props.length){ out.innerHTML='<span style="color:#A32D2D">❌ 物件が入っていないファイルです</span>'; input.value=''; return; }
+      const same = data.props.filter(p=>props.some(x=>x.name===p.name)).map(p=>p.name);
+      if(!confirm('「'+file.name+'」から物件'+data.props.length+'件を取り込みます。\n今ある物件はそのまま残ります。'
+        +(same.length?'\n\n次の物件は、ファイルの内容で置き換えます：\n'+same.join('\n'):''))){ input.value=''; return; }
+      const r = mergeImportData(data);
+      renderPropList();
+      out.innerHTML='<span style="color:#3B6D11">✅ 追加 '+r.added.length+'件・更新 '+r.updated.length+'件（物件は全部で '+props.length+'件）</span>';
+    }catch(err){
+      out.innerHTML='<span style="color:#A32D2D">❌ 読み込みエラー：'+err.message+'</span>';
+    }
+    input.value='';
+  };
+  reader.readAsText(file);
 }
 
 function importAllData(input){
