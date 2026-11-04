@@ -333,6 +333,21 @@ run('アプリの版（表示・package.json と一致）', () => {
   if(pkg.version!==v) throw new Error('package.json '+pkg.version+' ≠ '+v);
   if(!d.getElementById('appVersion').textContent.includes('v'+v)) throw new Error('見出しの版の表示');
 });
+run('外したスタッフ（佐藤理絵・大下翼）は保存データからも外れる', () => {
+  if(w.eval('staffList').some(n=>n==='佐藤　理絵'||n==='大下　翼')) throw new Error('既定の一覧に残っている');
+  const old = {props:[], nextPid:2, boxNoVer:3, staffList:['江藤　奨','佐藤　理絵','大下　翼','外注'], tantoMap:{1:{'企画':'佐藤　理絵','IC':'外注'}}, pStates:{}};
+  const w14 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(old)); }}).window;
+  const st = w14.eval('staffList');
+  if(st.includes('佐藤　理絵') || st.includes('大下　翼') || !st.includes('外注')) throw new Error('保存データのスタッフ '+st);
+  if(w14.eval('tantoMap[1]["企画"]') || w14.eval('tantoMap[1].IC')!=='外注') throw new Error('担当者設定');
+  // 外したあとに同じ名前を足し直した場合は、次に開いても消さない
+  w14.eval("staffList.push('佐藤　理絵')"); w14.saveData();
+  const saved = w14.localStorage.getItem('housing_roadmap_v7');
+  const w15 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
+  if(!w15.eval('staffList').includes('佐藤　理絵')) throw new Error('足し直した人が消えた');
+});
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
   w.HTMLAnchorElement.prototype.click = function(){};

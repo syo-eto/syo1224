@@ -404,7 +404,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.1.2（2026-11-04）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.1.3（2026-11-04）</span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -731,7 +731,7 @@ const CATS_TANTO=['企画','企画補助','建築家','設計チェック','構�
 let props=[];
 let nextPid=1;
 let pStates={};  // 物件ごとのタスク状態
-let staffList=['江藤　奨','佐藤　慎一郎','成田　新太郎','佐藤　理絵','髙橋　勇輝','矢田　弥生','濱口　裕生','安藤　靖','金子　孝二','宇都宮　一平','佐藤　博史','姫野　道広','神田　美穂','矢野　裕太','石井　瞭成','工藤　芹歌','佐藤　佳奈','井上　博子','竹嶋　都美','佐藤　美歌','大下　翼','野内　早紀','秋吉　広太','吉田　和広','外注'];
+let staffList=['江藤　奨','佐藤　慎一郎','成田　新太郎','髙橋　勇輝','矢田　弥生','濱口　裕生','安藤　靖','金子　孝二','宇都宮　一平','佐藤　博史','姫野　道広','神田　美穂','矢野　裕太','石井　瞭成','工藤　芹歌','佐藤　佳奈','井上　博子','竹嶋　都美','佐藤　美歌','野内　早紀','秋吉　広太','吉田　和広','外注'];
 let tantoMap={};  // {pid:{cat:name}}
 let kanryoDates={};  // {pid_no: date}
 let itemCheckDates={};  // {pid_no_idx: date}
@@ -1773,7 +1773,7 @@ function openPropAndModal(pid, taskNo){
 // ===== データエクスポート・インポート =====
 function exportAllData(){
   const data = {
-    version: 'v7', appVersion: APP_VERSION, boxNoVer: BOX_NO_VER,
+    version: 'v7', appVersion: APP_VERSION, boxNoVer: BOX_NO_VER, staffVer: STAFF_VER,
     exportedAt: new Date().toISOString(),
     props, nextPid, staffList,
     tantoMap, gateDates, kanryoDates, itemCheckDates,
@@ -1904,7 +1904,7 @@ function importAllData(input){
       if(Array.isArray(data.boxHistory)) boxHistory = data.boxHistory;
       if(data.nextPid) nextPid = data.nextPid;
       if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
-      if(data.tantoMap) Object.assign(tantoMap, data.tantoMap);
+      if(data.tantoMap) Object.assign(tantoMap, data.tantoMap); removeRetiredStaff(data);
       if(data.gateDates) Object.assign(gateDates, data.gateDates);
       if(data.kanryoDates) Object.assign(kanryoDates, data.kanryoDates);
       if(data.itemCheckDates) Object.assign(itemCheckDates, data.itemCheckDates);
@@ -2005,7 +2005,17 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.1.2';
+const APP_VERSION = '0.1.3';
+// スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
+const STAFF_VER = 1;
+const RETIRED_STAFF = ['佐藤　理絵','大下　翼'];
+function removeRetiredStaff(data){
+  if((data.staffVer||0) >= STAFF_VER) return;
+  RETIRED_STAFF.forEach(n=>{
+    const i=staffList.indexOf(n); if(i>=0) staffList.splice(i,1);
+    Object.values(tantoMap).forEach(m=>Object.keys(m).forEach(c=>{ if(m[c]===n) delete m[c]; }));
+  });
+}
 
 // ===== ボックス管理の更新履歴 =====
 // TEMPLATE_HISTORY：アプリに組み込んだテンプレートの更新（配布のたびに追記する）。boxHistory：この端末でボックス管理から行った変更（保存する）
@@ -2299,7 +2309,7 @@ const SAVE_KEY = 'housing_roadmap_v7';
 function saveData(){
   try{
     const data={
-      boxNoVer: BOX_NO_VER, props, nextPid, staffList, taskLinks,
+      boxNoVer: BOX_NO_VER, staffVer: STAFF_VER, props, nextPid, staffList, taskLinks,
       tantoMap, gateDates, kanryoDates, itemCheckDates,
       pStates: Object.fromEntries(
         Object.entries(pStates).map(([pid,s])=>[pid,{
@@ -2385,7 +2395,7 @@ function loadData(){
     if(Array.isArray(data.boxHistory)) boxHistory = data.boxHistory;
     if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
     if(data.taskLinks) Object.assign(taskLinks, data.taskLinks);
-    if(data.tantoMap) Object.assign(tantoMap, data.tantoMap);
+    if(data.tantoMap) Object.assign(tantoMap, data.tantoMap); removeRetiredStaff(data);
     if(data.gateDates) Object.assign(gateDates, data.gateDates);
     if(data.kanryoDates) Object.assign(kanryoDates, data.kanryoDates);
     if(data.itemCheckDates) Object.assign(itemCheckDates, data.itemCheckDates);
