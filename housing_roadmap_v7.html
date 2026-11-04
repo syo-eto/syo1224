@@ -170,10 +170,14 @@ table.main tr:hover td{background:var(--color-background-secondary,#f5f5f5)}
 .mprog-txt{font-size:13px;color:var(--color-text-secondary,#666);padding:.35rem 1rem .5rem;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .prog-badge{font-size:12px;padding:1px 7px;border-radius:20px;font-weight:500}
 .modal-body{padding:.5rem 1rem 1rem;max-height:62vh;overflow-y:auto}
-.cl-header{display:grid;grid-template-columns:1fr 54px 54px 54px;gap:4px;padding:4px 0 6px;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);margin-bottom:2px}
+.cl-header{display:grid;grid-template-columns:1fr 54px 54px 54px 18px;gap:4px;padding:4px 0 6px;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);margin-bottom:2px}
 .cl-hdr-lbl{font-size:12px;font-weight:600;text-align:center}
-.cl-item{display:grid;grid-template-columns:1fr 54px 54px 54px;gap:4px;padding:7px 0;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);align-items:start}
+.cl-item{display:grid;grid-template-columns:1fr 54px 54px 54px 18px;gap:4px;padding:7px 0;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);align-items:start}
 .cl-item:last-child{border-bottom:none}
+.why-cell{display:flex;justify-content:center;padding-top:4px}
+.why-tip{position:relative;font-size:12px;line-height:1;cursor:help;outline:none}
+.why-tip::after{content:attr(data-tip);position:absolute;right:150%;top:50%;transform:translateY(-50%);z-index:20;width:max-content;max-width:240px;white-space:normal;padding:6px 9px;border-radius:6px;background:#333;color:#fff;font-size:12px;line-height:1.5;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;visibility:hidden;transition:opacity .1s}
+.why-tip:hover::after,.why-tip:focus::after{opacity:1;visibility:visible}
 .cl-item.is-done .cl-text{text-decoration:line-through;color:var(--color-text-tertiary,#aaa)}
 .cl-item.is-fuyo{opacity:.5}.cl-item.is-fuyo .cl-text{text-decoration:line-through;color:var(--color-text-tertiary,#aaa)}
 .cl-item.is-help .cl-text{color:#C0392B}
@@ -399,7 +403,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04c</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">版 2026-11-04d</span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -1340,7 +1344,7 @@ function renderModalBody(no){
     '<div class="cl-header"><div></div>'
     +'<div class="cl-hdr-lbl" style="color:#3B6D11">✔<br>完了</div>'
     +'<div class="cl-hdr-lbl" style="color:#888">―<br>不要</div>'
-    +'<div class="cl-hdr-lbl" style="color:#E24B4A">😢<br>HELP</div></div>'
+    +'<div class="cl-hdr-lbl" style="color:#E24B4A">😢<br>HELP</div><div></div></div>'
     +t.items.map((item,i)=>{
       const isDone=done[no][i],isFuyo=fuyo[no][i],isHelp=help[no][i],hm=memo[no][i]||'';
       const rowCls=(isDone?'is-done':isFuyo?'is-fuyo':'')+(isHelp&&!isDone&&!isFuyo?' is-help':'');
@@ -1357,6 +1361,8 @@ function renderModalBody(no){
         +'<div class="cl-check-cell"><label class="check-wrap check-done"><input type="checkbox"'+(isDone?' checked':'')+' onchange="toggleDone('+no+','+i+',this.checked)"><span class="check-lbl">完了</span></label></div>'
         +'<div class="cl-check-cell"><label class="check-wrap check-fuyo"><input type="checkbox"'+(isFuyo?' checked':'')+' onchange="toggleFuyo('+no+','+i+',this.checked)"><span class="check-lbl">不要</span></label></div>'
         +'<div class="cl-check-cell"><label class="check-wrap check-help"><input type="checkbox"'+(isHelp?' checked':'')+' onchange="toggleHelp('+no+','+i+',this.checked)"><span class="check-lbl">HELP</span></label></div>'
+        // 追加理由：💡にカーソルを合わせる（スマホはタップ）と出る
+        +'<div class="why-cell">'+(item.why?'<span class="why-tip" tabindex="0" data-tip="追加理由：'+String(item.why).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'">💡</span>':'')+'</div>'
         +'</div>';
     }).join('');
 }

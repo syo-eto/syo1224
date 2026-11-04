@@ -288,7 +288,7 @@ run('ボックス管理の更新履歴', () => {
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
   if(w12.eval('boxHistory.length')!==3) throw new Error('再読み込みで履歴が消えた');
 });
-run('タスク追加の追加理由（ボックス管理だけに出る）', () => {
+run('タスク追加の追加理由（ボックス管理と💡だけに出る）', () => {
   const w13 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
   const d13 = w13.document; w13.confirm = () => true;
@@ -314,6 +314,10 @@ run('タスク追加の追加理由（ボックス管理だけに出る）', () 
   const body = d13.getElementById('mBody').textContent;
   if(!body.includes('理由つきタスク')) throw new Error('タスクが物件に出ない');
   if(body.includes('監査で指摘されたため')) throw new Error('追加理由が物件の画面に出ている');
+  // HELPの右の💡にカーソルを合わせると理由が出る（data-tip）。理由の無いタスクには出ない
+  const tips = d13.querySelectorAll('#mBody .why-tip');
+  if(tips.length!==1 || tips[0].getAttribute('data-tip')!=='追加理由：監査で指摘されたため') throw new Error('💡の理由');
+  if(!tips[0].closest('.cl-item').textContent.includes('理由つきタスク')) throw new Error('💡が別のタスクに付いている');
 });
 run('エクスポートのデータ構造', () => {
   w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {};
