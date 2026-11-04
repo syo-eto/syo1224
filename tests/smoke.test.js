@@ -176,6 +176,12 @@ run('物件の追加取り込み：今の物件を残し、同名は置き換え
   if(w8.eval('kanryoDates["'+nid+'_1"]')!=='2026-02-01' || w8.eval('itemCheckDates["'+nid+'_5_0"]')!=='2026-02-02') throw new Error('日付が移っていない');
   if(w8.eval('tantoMap['+nid+']["企画"]')!=='新しい人' || !w8.eval('staffList').includes('新しい人')) throw new Error('担当者');
   if(w8.eval('gateDates['+nid+']["キックオフ"]')!=='2026-01-10') throw new Error('ゲート');
+  if(!w8.eval('staffList').includes('外注')) throw new Error('スタッフに外注が無い');
+  // removeStaff で外したスタッフは、一覧と他の物件の担当者からも消える
+  w8.eval('tantoMap['+keepId+']={"IC":"新しい人"}');
+  w8.mergeImportData({props:[], removeStaff:['新しい人']});
+  if(w8.eval('staffList').includes('新しい人') || w8.eval('tantoMap['+keepId+'].IC')) throw new Error('removeStaff が効かない');
+  file.staffList=[];
   // もう一度取り込むと、同名の物件を置き換える（増えない）
   file.pStates[7].ts['1']='着手前'; file.kanryoDates={};
   r = w8.mergeImportData(JSON.parse(JSON.stringify(file)));

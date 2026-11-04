@@ -715,7 +715,7 @@ const CATS_TANTO=['企画','企画補助','建築家','設計チェック','構�
 let props=[];
 let nextPid=1;
 let pStates={};  // 物件ごとのタスク状態
-let staffList=['江藤　奨','佐藤　慎一郎','成田　新太郎','佐藤　理絵','髙橋　勇輝','矢田　弥生','濱口　裕生','安藤　靖','金子　孝二','宇都宮　一平','佐藤　博史','姫野　道広','神田　美穂','矢野　裕太','石井　瞭成','工藤　芹歌','佐藤　佳奈','井上　博子','竹嶋　都美','佐藤　美歌','大下　翼','野内　早紀','秋吉　広太','吉田　和広'];
+let staffList=['江藤　奨','佐藤　慎一郎','成田　新太郎','佐藤　理絵','髙橋　勇輝','矢田　弥生','濱口　裕生','安藤　靖','金子　孝二','宇都宮　一平','佐藤　博史','姫野　道広','神田　美穂','矢野　裕太','石井　瞭成','工藤　芹歌','佐藤　佳奈','井上　博子','竹嶋　都美','佐藤　美歌','大下　翼','野内　早紀','秋吉　広太','吉田　和広','外注'];
 let tantoMap={};  // {pid:{cat:name}}
 let kanryoDates={};  // {pid_no: date}
 let itemCheckDates={};  // {pid_no_idx: date}
@@ -1799,6 +1799,11 @@ function mergeImportData(data){
     Object.entries(data.itemCheckDates||{}).forEach(([k,v])=>{ if(k.startsWith(pre)) itemCheckDates[pid+'_'+k.slice(pre.length)]=v; });
   });
   (data.staffList||[]).forEach(n=>{ if(n && !staffList.includes(n)) staffList.push(n); });
+  // removeStaff：スタッフ一覧から外す名前（全物件の担当者設定からも外す）
+  (data.removeStaff||[]).forEach(n=>{
+    const i=staffList.indexOf(n); if(i>=0) staffList.splice(i,1);
+    Object.values(tantoMap).forEach(m=>Object.keys(m).forEach(c=>{ if(m[c]===n) delete m[c]; }));
+  });
   saveData();
   return res;
 }
