@@ -404,7 +404,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.1.0（2026-11-04）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.1.1（2026-11-04）</span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -757,10 +757,14 @@ function openOv(id){document.getElementById(id).classList.add('open');}
 function closeOv(id){document.getElementById(id).classList.remove('open');}
 
 // ===== フェーズ進捗計算 =====
-// 全タスクが不要のボックス（一括不要など）は、ボックス単位の％の分母にも分子にも数えない
+// 不要のボックスは、ボックス単位の％の分母にも分子にも数えない。
+// 不要のボックス＝全タスクが不要（一括不要など）、または「完了」なのに完了したタスクが1つも無く、不要のタスクだけがあるもの
 function isBoxFuyo(pid,no){
-  const f=pStates[pid]&&pStates[pid].fuyo[no];
-  return !!(f&&f.length&&f.every(Boolean));
+  const st=pStates[pid]; if(!st) return false;
+  const f=st.fuyo[no], d=st.done[no]||[];
+  if(!f||!f.length||!f.some(Boolean)) return false;
+  if(f.every(Boolean)) return true;
+  return st.ts[no]==='完了' && !d.some(Boolean);
 }
 function phasePct(pid,pIdx){
   const all=TASKS.filter(t=>PCOLS[pIdx].g.includes(t.group)).map(t=>t.no);
@@ -1297,7 +1301,7 @@ function render(){
     const catCls='c'+(t.category||'').replace(/\s/g,'');
     const kb=getKanryobi(t.no);
     // 全タスクが不要のボックス：状態は「完了」のまま、表示だけ「不要」
-    const allFuyo=st==='完了'&&prog&&prog.total>0&&prog.fuyoN===prog.total;
+    const allFuyo=st==='完了'&&isBoxFuyo(curPid,t.no);
     return '<tr class="'+(st==='完了'?'done-row':'')+'">'
       +'<td class="no-col">'+t.no+'</td>'
       +'<td><span class="tlink" onclick="openModal('+t.no+')">'
@@ -2001,7 +2005,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.1.0';
+const APP_VERSION = '0.1.1';
 
 // ===== ボックス管理の更新履歴 =====
 // TEMPLATE_HISTORY：アプリに組み込んだテンプレートの更新（配布のたびに追記する）。boxHistory：この端末でボックス管理から行った変更（保存する）

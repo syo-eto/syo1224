@@ -251,6 +251,14 @@ run('不要のボックスは、フェーズの％に数えない', () => {
   // 物件一覧のプラン確定の％にも反映
   w10.goToList(); w10.renderPropList();
   if(!w10.document.getElementById('propTbody').textContent.includes(r.pct+'%')) throw new Error('一覧の％');
+  // 完了で、完了タスクが0件・不要が一部だけのボックスも不要とみなす。完了タスクが1件でもあれば数える
+  w10.eval('pStates['+pid+'].fuyo['+nos[0]+']=TASKS.find(t=>t.no==='+nos[0]+').items.map((_,i)=>i===0)');
+  if(!w10.eval('isBoxFuyo('+pid+','+nos[0]+')')) throw new Error('完了・不要のみ（一部）が不要にならない');
+  w10.eval('pStates['+pid+'].done['+nos[0]+'][1]=true');
+  if(w10.eval('isBoxFuyo('+pid+','+nos[0]+')')) throw new Error('完了タスクがあるのに不要になった');
+  w10.eval('pStates['+pid+'].done['+nos[0]+'][1]=false');
+  w10.eval('pStates['+pid+'].ts['+nos[0]+']="進行中"');
+  if(w10.eval('isBoxFuyo('+pid+','+nos[0]+')')) throw new Error('進行中のボックスが不要になった');
   // 全ボックスが不要のフェーズは100%（済み）
   w10.eval('TASKS.filter(t=>PCOLS[0].g.includes(t.group)).forEach(t=>{pStates['+pid+'].fuyo[t.no]=t.items.length?t.items.map(()=>true):[]; pStates['+pid+'].ts[t.no]="完了";})');
   const r2 = w10.eval('phasePct('+pid+',0)');

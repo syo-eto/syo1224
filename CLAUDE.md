@@ -41,7 +41,7 @@
 - `pStates[pid]` = `{ts, done, fuyo, help, memo, overrideDue}`。`ts[no]` がボックスの状態（着手前・進行中・完了）、`done/fuyo/help[no]` がタスクごとの真偽の配列。
 - `tantoMap[pid][職種]` = 担当者名。`gateDates[pid][ゲート名]` = `YYYY-MM-DD`。
 - `kanryoDates['pid_no']`、`itemCheckDates['pid_no_idx']`、`taskLinks['no_idx']`（添付は全物件共通）。
-- 進捗は2種類ある。ボックス単位（`phasePct` `overallPct`）は「状態が完了のボックス数 ÷ フェーズ内のボックス数」で、全タスクが不要のボックス（`isBoxFuyo`）は分母にも分子にも数えない。フェーズの全ボックスが不要なら100%。タスク単位（`calcProg`）は「完了数 ÷ 不要でないタスク数」。
+- 進捗は2種類ある。ボックス単位（`phasePct` `overallPct`）は「状態が完了のボックス数 ÷ フェーズ内のボックス数」で、不要のボックス（`isBoxFuyo`：全タスクが不要、または状態が完了で完了タスクが0件・不要タスクが1件以上）は分母にも分子にも数えず、ロードマップの状態欄も「不要」と表示する。フェーズの全ボックスが不要なら100%。タスク単位（`calcProg`）は「完了数 ÷ 不要でないタスク数」。
 
 - ボックス管理の更新履歴：`TEMPLATE_HISTORY`（アプリに組み込んだテンプレートの更新。テンプレートを変えて配布するたびに1行追記する）と `boxHistory`（この端末でボックス管理から行った追加・編集・削除。`{at,type,no,name,detail}`、最大300件、保存・エクスポート・インポートの対象）。ボックス管理タブの「📝 更新履歴」に新しい順で出す。編集の内容は `describeBoxChange` が作る。
 
