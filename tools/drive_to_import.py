@@ -29,8 +29,11 @@ def staffname(n):
     if n=='社長': return '佐藤　慎一郎'
     # 社外の人（「〇〇さん」）は「外注」にまとめる
     if n.endswith('さん'): GAICHU.add(n); return '外注'
-    # 特例（「社長・髙橋」のような複数名）は選択肢に入れず、担当者は未設定にする
-    if '・' in n: TOKUREI.add(n); return None
+    # 特例（「社長・髙橋」のような複数名）は選択肢に入れない。社長以外が一人なら、その人を担当者にする（利用者の指示：藤澤様邸は髙橋）
+    if '・' in n:
+        TOKUREI.add(n)
+        others=[x for x in n.split('・') if x.strip() and x.strip()!='社長']
+        return staffname(others[0]) if len(others)==1 else None
     c=[s for s in staff if s.split('　')[0]==n or s.replace('　','')==n.replace('　','')]
     return c[0] if len(c)==1 else n
 APP={}
