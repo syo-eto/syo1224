@@ -64,8 +64,9 @@ for pid,f in enumerate(files,1):
     ps={'ts':{},'done':{},'fuyo':{},'help':{},'memo':{},'overrideDue':{}}
     BH=[re.sub(r'\s','',str(v)) for v in W['ボックス一覧'].iloc[1]]
     CS,CD,CK=BH.index('状態'),BH.index('期日'),BH.index('完了実績')
+    CB=BH.index('一括不要') if '一括不要' in BH else None
     b=W['ボックス一覧'].iloc[2:].copy(); b[0]=b[0].ffill()
-    seen=set(); miss=[]; itemsMiss=0; itemsHit=0
+    seen=set(); miss=[]; itemsMiss=0; itemsHit=0; nBulk=0
     nJikko=sum(1 for v in b[3] if norm(v)=='実行予算')
     for _,row in b.iterrows():
         st=row[CS]
@@ -114,6 +115,10 @@ for pid,f in enumerate(files,1):
                     if (done[idx] or fuyo[idx]) and m['d']: res['itemCheckDates'][f'{pid}_{no}_{idx}']=m['d']
                 itemsMiss+=sum(1 for r in rows if not r['u'] and (r['c'] or r['f'] or r['h']))
                 um=[r['t'][:25] for r in rows if not r['u'] and (r['c'] or r['f'] or r['h'])]
+        # ボックス一覧の「一括不要」に印があるボックスは、全タスクを不要にする（アプリの％に数えない）
+        if CB is not None and truthy(row[CB]):
+            fuyo=[True]*n; done=[False]*n; ps['ts'][no]='完了'; nBulk+=1
+            for k in [k for k in res['itemCheckDates'] if k.startswith(f'{pid}_{no}_')]: del res['itemCheckDates'][k]
         ps['done'][no]=done; ps['fuyo'][no]=fuyo; ps['help'][no]=hlp; ps['memo'][no]=memo
     # このタスク管理表に無いボックスは、全タスク不要（完了扱い）にする
     # ただし、同じフェーズの他のボックスが全部完了しているときだけ（先のフェーズのボックスは着手前のまま）
@@ -124,7 +129,7 @@ for pid,f in enumerate(files,1):
         ps['done'][t['no']]=[False]*n; ps['fuyo'][t['no']]=[True]*n; ps['help'][t['no']]=[False]*n; ps['memo'][t['no']]=['']*n
     res['pStates'][pid]=ps
     cnt={s:list(ps['ts'].values()).count(s) for s in ('完了','進行中','着手前')}
-    report.append(dict(name=name,addr=addr,ki=ki,chakko=chakko,boxes=len(seen),missingBoxes=miss,state=cnt,itemsMatched=itemsHit,checkedRowsNotMatched=itemsMiss,tanto=tanto,appBoxesNotInSheet=[t['no'] for t in app['tasks'] if t['no'] not in seen],markedFuyo=report_absent))
+    report.append(dict(name=name,addr=addr,ki=ki,chakko=chakko,boxes=len(seen),missingBoxes=miss,state=cnt,itemsMatched=itemsHit,checkedRowsNotMatched=itemsMiss,tanto=tanto,appBoxesNotInSheet=[t['no'] for t in app['tasks'] if t['no'] not in seen],markedFuyo=report_absent,bulkFuyo=nBulk))
 res['removeStaff']=sorted(GAICHU|TOKUREI)
 if GAICHU and '外注' not in res['staffList']: res['staffList'].append('外注')  # 保存済みのスタッフ一覧に外注が無い人向け
 json.dump(res,open(out,'w',encoding='utf8'),ensure_ascii=False)
