@@ -58,6 +58,8 @@ for pid,f in enumerate(files,1):
     tanto={}
     for r in range(len(cov)):
         c=str(cov.iloc[r,0]).strip(); v=cov.iloc[r,2] if cov.shape[1]>2 else None
+        # 建築家の欄が「建築家」だけ（名前なし）は外注
+        if c=='建築家' and not isna(v) and str(v).strip()=='建築家': tanto[c]='外注'; continue
         if c in CATS and not isna(v) and str(v).strip() and str(v).strip()!=c:
             nm_=staffname(v)
             if nm_: tanto[c]=nm_
