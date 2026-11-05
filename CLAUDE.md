@@ -23,7 +23,7 @@
 | ステータス判定 | `phasePct` `calcPropStatus` `getPropStatus` `overallPct` |
 | ロードマップ | `openProp` `render` |
 | チェック画面 | `openModal` `renderModalBody` `calcProg` `checkAutoComplete` `bulkFuyo` `renderTaskLinks` |
-| ゲート・期日 | `GATES`（956行付近）`openGateDlg` `saveGate` `calcDues` `recalcAllDues` `migrateDues` `getEffectiveDue` |
+| ゲート・期日 | `GATES`（956行付近）`openGateDlg` `saveGate` `calcDues` `legacyDues` `recalcAllDues` `migrateDues` `getEffectiveDue` |
 | 担当者 | `openTantoDlg` `saveTanto` `goToMyTasks` `renderMyTasks` |
 | 管理者設定 | `goToAdmin` `switchAdminTab` `renderPropAdminList` `deleteProp` `renderTaskEditList` `saveTaskEdit` `openLinkAdd` `renderBoxHistory` |
 | 保存 | `saveData` `loadData` `scheduleSave` `exportAllData` `importAllData` |
@@ -55,8 +55,8 @@
 - 物件のステータスは入力しない。`calcPropStatus` が8段階で自動判定する：プラン前 → プラン中 → 着工準備中 → 着工前 → 着工後 → 上棟後 → 引渡前 → 引渡済。最初に未完了の段階が、その物件の状態になる。
   使うフェーズの番号（`PCOLS`）：0 プラン確定、1 完成宅地、2 構造、3 確認、4 図書、5 着工前工務業務、6 着工後、7 上棟後、8 引渡前＋引渡後。フェーズ名「引渡し」は「引渡前」に改めた（保存済みのボックス一覧は `renameOldGroups` が読み込み時に直す）。物件ステータスの「引渡前」と同じ文字だが別物。
 - 「不要」にしたタスクは、進捗の分母にも分子にも数えない。全タスクが完了か不要になると、ボックスは自動で「完了」になる。
-- ゲートは15個（`GATES`）。日付は直接入力し、保存すると全ボックスの期日を計算し直す。計算はスプレッドシート（ボックス一覧のI列）と同じで、期日 ＝ 対象ゲートの日付 − 所要日程。`TASK_GATE_MAP[no] = {gate:対象ゲート, days:所要日程}`（2026-11-05 のテンプレートのM列・L列から作成、166ボックス。対象ゲートの無い16ボックスは期日なし）。テンプレートの対象ゲート・所要日程が変わったら作り直す。0.2.1 まではキックオフだけを基準にした別の計算だった（`TASK_OFFSETS` は削除）。
-- スプレッドシートから取り込んだ物件（`props[].dueFromSheet`）は、シートの期日をそのまま使い、ゲートを保存しても計算しない（利用者の指示：松下様邸の期日は元のまま）。`mergeImportData` は `appVersion` の無いデータ（ドライブから作った JSON）の物件に印を付ける。0.2.1 以前の保存データは `migrateDues`（`DUE_VER` 2）が一度だけ判定する：旧計算と合わない期日がある物件はシートからとみなして印を付け、それ以外は新しい計算でやり直す。
+- ゲートは15個（`GATES`）。日付は直接入力し、保存すると全ボックスの期日を計算し直す。計算はスプレッドシート（ボックス一覧のI列）と同じで、期日 ＝ 対象ゲートの日付 − 所要日程。`TASK_GATE_MAP[no] = {gate:対象ゲート, days:所要日程}`（2026-11-05 のテンプレートのM列・L列から作成、166ボックス。対象ゲートの無い16ボックスは期日なし）。テンプレートの対象ゲート・所要日程が変わったら作り直す。0.2.1 まではキックオフだけを基準にした別の計算だった（`TASK_OFFSETS` は削除し、日数は `LEGACY_KICKOFF_DAYS` に残した）。
+- スプレッドシートから取り込んだ物件（`props[].dueFromSheet`）は、シートの期日をそのまま使い、ゲートを保存しても計算しない（利用者の指示：松下様邸の期日は元のまま）。`mergeImportData` は `appVersion` の無いデータ（ドライブから作った JSON）の物件に印を付ける。0.2.2より前から登録されている物件（`props[].dueLegacy`）は、利用者の指示で期日を以前の計算のままにする：ゲートのボックスはそのゲートの日付、ほかは キックオフ − `LEGACY_KICKOFF_DAYS[no]`（`legacyDues`）。シートと同じ計算は、0.2.3以降に追加した物件だけ。保存データは `migrateDues`（`DUE_VER` 3）が一度だけ判定する：0.2.1以前のデータは、旧計算と合わない期日がある物件を `dueFromSheet`、それ以外を `dueLegacy`（期日はそのまま）。0.2.2で開いたデータ（`dueVer` 2）は、シート以外を `dueLegacy` にして期日を以前の計算に戻す。
 - テンプレートのシート側の不具合：I列の式が表紙の G6:J19 からゲートを探すが、「引渡」は20行目で範囲外のため、引渡が対象ゲートの6ボックスはシートでは期日が空になる（2026-11-05 時点。持ち主の野内さんに伝えるよう利用者に連絡済み）。アプリは引渡も計算する。
 - 担当者は「物件 × 職種（13種）」で設定する。「会議」「打合せ」は設定も表示も対象外。
 - ボックス編集を既存の物件へ反映するときは、完了済みのボックスは変えない。それ以外は追加のみ反映し、削除はしない。
