@@ -349,6 +349,26 @@ run('外したスタッフ（佐藤理絵・大下翼）は保存データから
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
   if(!w15.eval('staffList').includes('佐藤　理絵')) throw new Error('足し直した人が消えた');
 });
+run('古い保存データでスタッフが欠けていても、選ぶ画面に登録スタッフが全員出る（0.2.1）', () => {
+  const mk = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  // 利用者の手元で起きた形：江藤さんと「社長」だけ（staffVer 2 で保存済み）＋自分で足した人
+  const a = mk({props:[], nextPid:2, boxNoVer:3, staffVer:2, staffList:['江藤　奨','社長','外注','新人　太郎'], tantoMap:{}, pStates:{}});
+  const def = a.eval('DEFAULT_STAFF').filter(n=>n!=='外注');
+  const btns=[...a.document.querySelectorAll('#userPickList .user-pick-btn')].map(b=>b.dataset.name);
+  def.forEach(n=>{ if(!btns.includes(n)) throw new Error(n+' が選択肢に無い'); });
+  if(btns.includes('社長') || btns.includes('外注')) throw new Error('社長・外注が出る '+btns);
+  if(!btns.includes('新人　太郎')) throw new Error('自分で足した人が消えた');
+  if(btns[0]!=='江藤　奨' || btns[btns.length-1]!=='新人　太郎') throw new Error('並び '+btns);
+  const st=a.eval('staffList'); if(st[st.length-1]!=='外注') throw new Error('外注が末尾でない');
+  // 移行後にスタッフ管理で外した人は、次に開いても戻さない
+  a.eval("staffList.splice(staffList.indexOf('成田　新太郎'),1)"); a.saveData();
+  const b = mk(JSON.parse(a.localStorage.getItem('housing_roadmap_v7')));
+  if(b.eval('staffList').includes('成田　新太郎')) throw new Error('外した人が戻った');
+  // 取り込みで「社長」が入っても一覧に出さない
+  b.mergeImportData({props:[], staffList:['社長'], tantoMap:{}, pStates:{}});
+  if(b.eval('staffList').includes('社長')) throw new Error('取り込みで社長が入った');
+});
 run('起動時に使う人を選ぶ', () => {
   const mk = saved => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; if(saved) win.localStorage.setItem('housing_roadmap_v7_user', saved); }}).window;

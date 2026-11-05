@@ -412,7 +412,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.2.0（2026-11-04）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.2.1（2026-11-05）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -741,6 +741,8 @@ let props=[];
 let nextPid=1;
 let pStates={};  // 物件ごとのタスク状態
 let staffList=['江藤　奨','佐藤　慎一郎','成田　新太郎','髙橋　勇輝','矢田　弥生','濱口　裕生','安藤　靖','金子　孝二','宇都宮　一平','佐藤　博史','姫野　道広','神田　美穂','矢野　裕太','石井　瞭成','工藤　芹歌','佐藤　佳奈','井上　博子','竹嶋　都美','佐藤　美歌','野内　早紀','秋吉　広太','吉田　和広','外注'];
+// 登録スタッフ（既定の一覧）。保存データに欠けている人は、STAFF_VER 3 への移行時に一度だけ補う
+const DEFAULT_STAFF = staffList.slice();
 let tantoMap={};  // {pid:{cat:name}}
 let kanryoDates={};  // {pid_no: date}
 let itemCheckDates={};  // {pid_no_idx: date}
@@ -1663,7 +1665,7 @@ let myTaskUser='';
 // 起動のたびに選ぶ。前回の人は localStorage（この端末だけ）に覚えて、一番上に出す
 let curUser='';
 const USER_KEY='housing_roadmap_v7_user';
-function userChoices(){ return staffList.filter(n=>n && n!=='外注'); }
+function userChoices(){ return staffList.filter(n=>n && n!=='外注' && !(n in STAFF_ALIAS)); }
 function openUserPick(){
   let last=''; try{ last=localStorage.getItem(USER_KEY)||''; }catch(e){}
   const names=userChoices();
@@ -1869,6 +1871,7 @@ function mergeImportData(data){
     const i=staffList.indexOf(n); if(i>=0) staffList.splice(i,1);
     Object.values(tantoMap).forEach(m=>Object.keys(m).forEach(c=>{ if(m[c]===n) delete m[c]; }));
   });
+  normalizeStaff();
   saveData();
   return res;
 }
@@ -1935,7 +1938,7 @@ function importAllData(input){
       if(Array.isArray(data.boxHistory)) boxHistory = data.boxHistory;
       if(data.nextPid) nextPid = data.nextPid;
       if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
-      if(data.tantoMap) Object.assign(tantoMap, data.tantoMap); removeRetiredStaff(data);
+      if(data.tantoMap) Object.assign(tantoMap, data.tantoMap); removeRetiredStaff(data); normalizeStaff();
       if(data.gateDates) Object.assign(gateDates, data.gateDates);
       if(data.kanryoDates) Object.assign(kanryoDates, data.kanryoDates);
       if(data.itemCheckDates) Object.assign(itemCheckDates, data.itemCheckDates);
@@ -2036,10 +2039,10 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.2.1';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
-const STAFF_VER = 2;
+const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
 const RETIRED_STAFF = ['佐藤　理絵','大下　翼'];
 const STAFF_ALIAS = {'社長':'佐藤　慎一郎'};
 function removeRetiredStaff(data){
@@ -2054,6 +2057,20 @@ function removeRetiredStaff(data){
     if(!staffList.includes(to)) staffList.push(to);
     Object.values(tantoMap).forEach(m=>Object.keys(m).forEach(c=>{ if(m[c]===a) m[c]=to; }));
   });
+  // 古い保存データで欠けている登録スタッフを補う（一度だけ。以後スタッフ管理で外した人は戻さない）
+  DEFAULT_STAFF.forEach(n=>{ if(!staffList.includes(n)) staffList.push(n); });
+  normalizeStaff();
+}
+// 毎回行う整え：別名（社長など）を一覧から外して担当者設定を正式名に、登録スタッフを既定の順に、外注を末尾に
+function normalizeStaff(){
+  Object.entries(STAFF_ALIAS).forEach(([a,to])=>{
+    const i=staffList.indexOf(a);
+    if(i>=0){ staffList.splice(i,1); if(!staffList.includes(to)) staffList.push(to); }
+    Object.values(tantoMap).forEach(m=>Object.keys(m).forEach(c=>{ if(m[c]===a) m[c]=to; }));
+  });
+  const rank = n => n==='外注' ? 1e6 : (DEFAULT_STAFF.includes(n) ? DEFAULT_STAFF.indexOf(n) : 1e5);
+  const sorted = staffList.map((n,i)=>[n,i]).sort((x,y)=>(rank(x[0])-rank(y[0]))||(x[1]-y[1])).map(x=>x[0]);
+  staffList.splice(0, staffList.length, ...sorted);
 }
 
 // ===== ボックス管理の更新履歴 =====
@@ -2434,7 +2451,7 @@ function loadData(){
     if(Array.isArray(data.boxHistory)) boxHistory = data.boxHistory;
     if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
     if(data.taskLinks) Object.assign(taskLinks, data.taskLinks);
-    if(data.tantoMap) Object.assign(tantoMap, data.tantoMap); removeRetiredStaff(data);
+    if(data.tantoMap) Object.assign(tantoMap, data.tantoMap); removeRetiredStaff(data); normalizeStaff();
     if(data.gateDates) Object.assign(gateDates, data.gateDates);
     if(data.kanryoDates) Object.assign(kanryoDates, data.kanryoDates);
     if(data.itemCheckDates) Object.assign(itemCheckDates, data.itemCheckDates);
