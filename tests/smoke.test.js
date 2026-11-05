@@ -34,6 +34,12 @@ run('保存データに残っていても起動時に外れる', () => {
   w.eval("staffList.splice(0, staffList.length, '江藤　奨','佐藤　慎一郎','成田　新太郎','髙橋　勇輝','矢田　弥生'); delete tantoMap[1];");
   w.showUserSelect();
 });
+run('バージョン表示 ver.0.1.0', () => {
+  const v = w.eval('APP_VERSION');
+  if(v!==require('../package.json').version) throw new Error('package.json と不一致: '+v);
+  const els = [...d.querySelectorAll('.app-ver')];
+  if(els.length<2 || els.some(e=>e.textContent!=='ver.'+v)) throw new Error('表示='+els.map(e=>e.textContent));
+});
 run('パスワード入力が無い', () => { if(d.getElementById('page-login')||d.getElementById('loginIdInput')||d.querySelector('input[type=password]')) throw new Error('残存'); });
 run('利用者を選ぶと物件一覧が開く', () => {
   w.selectUser(2);
