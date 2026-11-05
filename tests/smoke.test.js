@@ -423,15 +423,52 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   w3.openModal(145);
   if(!w3.document.body.textContent.includes('袖の寸法の確認')) throw new Error('145のタスクが表示されない');
 });
-run('ゲートを入れると全ボックスに期日が付く（上棟案内を含む）', () => {
+run('期日はスプレッドシートと同じ「対象ゲート − 所要日程」（0.2.2）', () => {
   const w4 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
   w4.openAddDlg(); w4.document.getElementById('fName').value='期日邸'; w4.addProperty();
   w4.openProp(w4.eval('props[0].id'));
-  w4.openGateDlg(); w4.document.getElementById('gate-キックオフ').value='2026-01-01'; w4.saveGate();
-  if(w4.getEffectiveDue(148)!=='2025-08-11') throw new Error('148 上棟案内の期日 '+w4.getEffectiveDue(148));
-  const offs = w4.eval('TASK_OFFSETS'), map = w4.eval('TASK_GATE_MAP');
-  if(Object.keys(map).sort().join()!==Object.keys(offs).sort().join()) throw new Error('TASK_GATE_MAP と TASK_OFFSETS の番号が揃っていない');
+  w4.openGateDlg();
+  const set=(g,v)=>{ w4.document.getElementById('gate-'+g).value=v; };
+  set('キックオフ','2026-05-01'); set('着工','2026-11-02'); set('上棟','2026-12-14'); set('引渡','2027-03-20');
+  w4.saveGate();
+  const due=no=>w4.getEffectiveDue(no);
+  const exp={12:'2026-04-17', 19:'2026-05-01', 58:'2026-10-26', 100:'2026-10-30', 121:'2026-12-04', 148:'2026-12-07', 151:'2026-12-14', 176:'2027-03-20'};
+  Object.entries(exp).forEach(([no,v])=>{ if(due(Number(no))!==v) throw new Error(no+' の期日 '+due(Number(no))+'（正しくは '+v+'）'); });
+  // ゲート未入力のボックス・対象ゲートの無いボックスは期日なし
+  if(due(83) || due(163)) throw new Error('未入力のゲートで期日が付いた');
+  if(w4.eval('pStates[props[0].id].overrideDue[1]') || w4.eval('pStates[props[0].id].overrideDue[178]')) throw new Error('対象ゲートの無いボックスに期日');
+  const map = w4.eval('TASK_GATE_MAP');
+  if(Object.keys(map).length!==166) throw new Error('対象ゲートのあるボックス数 '+Object.keys(map).length);
+  const gates = w4.eval('GATES').map(g=>g.name);
+  Object.values(map).forEach(m=>{ if(!gates.includes(m.gate)) throw new Error('ゲート名が無い '+m.gate); });
+});
+run('シートから取り込んだ物件の期日は、ゲートを保存しても変えない（0.2.2）', () => {
+  const mk = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; if(data) win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  // 0.2.1 までの保存データ：1=取り込んだ物件（着工だけ、シートの期日）、2=アプリで作った物件（キックオフから旧計算）
+  const kick='2026-05-01';
+  const oldCalc=(w,no)=>{ const t=w.eval('TASKS').find(x=>x.no===no); const d=new Date(kick); d.setDate(d.getDate()-(150-t.offset)); return d.toISOString().slice(0,10); };
+  const probe = mk(null);
+  const od2={19:kick, 58:oldCalc(probe,58), 121:oldCalc(probe,121)};
+  const a = mk({props:[{id:1,name:'松下健志様邸'},{id:2,name:'アプリ邸'}], nextPid:3, boxNoVer:3, staffVer:3,
+    gateDates:{1:{'着工':'2026-11-02'}, 2:{'キックオフ':kick,'着工':'2026-11-02'}},
+    pStates:{1:{ts:{},done:{},fuyo:{},help:{},memo:{},overrideDue:{58:'2026-09-30',121:'2026-12-01'}}, 2:{ts:{},done:{},fuyo:{},help:{},memo:{},overrideDue:od2}}});
+  const ps=a.eval('props');
+  if(!ps[0].dueFromSheet || ps[1].dueFromSheet) throw new Error('取り込んだ物件の判定 '+JSON.stringify(ps));
+  if(a.eval('pStates[1].overrideDue[58]')!=='2026-09-30') throw new Error('取り込んだ物件の期日が変わった');
+  if(a.eval('pStates[2].overrideDue[58]')!=='2026-10-26' || a.eval('pStates[2].overrideDue[121]')) throw new Error('アプリの物件が新しい計算になっていない '+JSON.stringify(a.eval('pStates[2].overrideDue')));
+  a.openProp(1); a.openGateDlg();
+  if(!a.document.getElementById('gateDlgSub').textContent.includes('スプレッドシート')) throw new Error('ゲート画面に注記が無い');
+  a.document.getElementById('gate-着工').value='2026-12-01'; a.saveGate();
+  if(a.eval('pStates[1].overrideDue[58]')!=='2026-09-30' || a.eval('pStates[1].overrideDue[121]')!=='2026-12-01') throw new Error('ゲート保存で取り込んだ物件の期日が変わった');
+  // 保存し直したあとは判定し直さない
+  a.saveData(); const b = mk(JSON.parse(a.localStorage.getItem('housing_roadmap_v7')));
+  if(!b.eval('props')[0].dueFromSheet || b.eval('pStates[1].overrideDue[58]')!=='2026-09-30') throw new Error('再読み込みで変わった');
+  // ドライブの取り込み（appVersion なし）は印が付く。アプリのエクスポートは付かない
+  b.mergeImportData({props:[{id:9,name:'杉田様邸'}], pStates:{9:{overrideDue:{58:'2026-08-01'}}}});
+  b.mergeImportData({appVersion:'0.2.2', props:[{id:9,name:'別アプリ邸'}], pStates:{}});
+  const q=b.eval('props'); if(!q.find(x=>x.name==='杉田様邸').dueFromSheet || q.find(x=>x.name==='別アプリ邸').dueFromSheet) throw new Error('取り込み時の印');
 });
 const OLD_DATA = { // 番号を詰める前（184ボックス）の保存データ
   props:[{id:1,name:'旧邸'}], nextPid:2,

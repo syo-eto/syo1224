@@ -9,7 +9,7 @@
 - **始める前に必ず最新を確認する。** セッションごとに作業ブランチ（`claude/…`）が分かれ、古い版から始まることがある（2026-11-05に、11/2の版から始めて0.2.0の作業をやり直してしまった）。`git fetch origin` のあと各 `claude/*` ブランチの最新コミットの日時と `APP_VERSION` を比べ、一番新しいものに自分のブランチをそろえてから始める。
 
 - 初回のみ `npm install`。
-- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで43項目の操作を実行）を通す。
+- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで44項目の操作を実行）を通す。
 - 構文が通っても画面が崩れることがある（過去に何度かあった）。画面に関わる変更は、`tests/smoke.test.js` にその操作を足してから直す。
 - ファイルが大きい（`TASKS` の182ボックスが1行に入っている）。全体を読み込まず、`grep -n` と `sed -n` で必要な箇所だけ見る。
 - 変更は小さく、1つずつ動作確認する。利用者は変更のたびにファイルを開いて確認する。
@@ -18,12 +18,12 @@
 
 | 領域 | 場所 |
 | --- | --- |
-| データ定数 | 644〜690行付近：`TASKS` `PROP_STATUSES` `TASK_GATE_MAP` `TASK_OFFSETS` `GROUPS` `PCOLS` `PREP_ROWS` `CATS_TANTO` `props` `pStates` `staffList` `tantoMap` `kanryoDates` `itemCheckDates` `taskLinks` |
+| データ定数 | 644〜690行付近：`TASKS` `PROP_STATUSES` `TASK_GATE_MAP` `GROUPS` `PCOLS` `PREP_ROWS` `CATS_TANTO` `props` `pStates` `staffList` `tantoMap` `kanryoDates` `itemCheckDates` `taskLinks` |
 | 物件一覧 | `renderPropList` `sortedProps` `renderStatusFilters` |
 | ステータス判定 | `phasePct` `calcPropStatus` `getPropStatus` `overallPct` |
 | ロードマップ | `openProp` `render` |
 | チェック画面 | `openModal` `renderModalBody` `calcProg` `checkAutoComplete` `bulkFuyo` `renderTaskLinks` |
-| ゲート・期日 | `GATES`（956行付近）`openGateDlg` `saveGate` `recalcAllDues` `getEffectiveDue` |
+| ゲート・期日 | `GATES`（956行付近）`openGateDlg` `saveGate` `calcDues` `recalcAllDues` `migrateDues` `getEffectiveDue` |
 | 担当者 | `openTantoDlg` `saveTanto` `goToMyTasks` `renderMyTasks` |
 | 管理者設定 | `goToAdmin` `switchAdminTab` `renderPropAdminList` `deleteProp` `renderTaskEditList` `saveTaskEdit` `openLinkAdd` `renderBoxHistory` |
 | 保存 | `saveData` `loadData` `scheduleSave` `exportAllData` `importAllData` |
@@ -55,7 +55,9 @@
 - 物件のステータスは入力しない。`calcPropStatus` が8段階で自動判定する：プラン前 → プラン中 → 着工準備中 → 着工前 → 着工後 → 上棟後 → 引渡前 → 引渡済。最初に未完了の段階が、その物件の状態になる。
   使うフェーズの番号（`PCOLS`）：0 プラン確定、1 完成宅地、2 構造、3 確認、4 図書、5 着工前工務業務、6 着工後、7 上棟後、8 引渡前＋引渡後。フェーズ名「引渡し」は「引渡前」に改めた（保存済みのボックス一覧は `renameOldGroups` が読み込み時に直す）。物件ステータスの「引渡前」と同じ文字だが別物。
 - 「不要」にしたタスクは、進捗の分母にも分子にも数えない。全タスクが完了か不要になると、ボックスは自動で「完了」になる。
-- ゲートは15個（`GATES`）。日付は直接入力し、保存すると `TASK_GATE_MAP` と `TASK_OFFSETS` から全ボックスの期日を再計算する。
+- ゲートは15個（`GATES`）。日付は直接入力し、保存すると全ボックスの期日を計算し直す。計算はスプレッドシート（ボックス一覧のI列）と同じで、期日 ＝ 対象ゲートの日付 − 所要日程。`TASK_GATE_MAP[no] = {gate:対象ゲート, days:所要日程}`（2026-11-05 のテンプレートのM列・L列から作成、166ボックス。対象ゲートの無い16ボックスは期日なし）。テンプレートの対象ゲート・所要日程が変わったら作り直す。0.2.1 まではキックオフだけを基準にした別の計算だった（`TASK_OFFSETS` は削除）。
+- スプレッドシートから取り込んだ物件（`props[].dueFromSheet`）は、シートの期日をそのまま使い、ゲートを保存しても計算しない（利用者の指示：松下様邸の期日は元のまま）。`mergeImportData` は `appVersion` の無いデータ（ドライブから作った JSON）の物件に印を付ける。0.2.1 以前の保存データは `migrateDues`（`DUE_VER` 2）が一度だけ判定する：旧計算と合わない期日がある物件はシートからとみなして印を付け、それ以外は新しい計算でやり直す。
+- テンプレートのシート側の不具合：I列の式が表紙の G6:J19 からゲートを探すが、「引渡」は20行目で範囲外のため、引渡が対象ゲートの6ボックスはシートでは期日が空になる（2026-11-05 時点。持ち主の野内さんに伝えるよう利用者に連絡済み）。アプリは引渡も計算する。
 - 担当者は「物件 × 職種（13種）」で設定する。「会議」「打合せ」は設定も表示も対象外。
 - ボックス編集を既存の物件へ反映するときは、完了済みのボックスは変えない。それ以外は追加のみ反映し、削除はしない。
 - 物件追加の入力は物件名・住所・主担当者のみ。続けて担当者設定、ゲート設定（どちらもスキップ可）。一覧は新しい順。
@@ -67,7 +69,7 @@
 - `toggleDone` `toggleFuyo` `saveHelp` `saveTanto` `saveGate` `addProperty` `cycleState` `bulkFuyo` は、末尾で関数を包んで `scheduleSave()` を呼んでいる。ほかに保存が必要な処理は、自分で `scheduleSave()` を呼ぶ。
 - 起動の順序は `loadData()` → `renderPropList()`。保存先のキーは `localStorage` の `housing_roadmap_v7`。
 - `TASKS` は、ボックス管理で編集したとき（`tasksEdited` が true）だけ保存キーの `tasks` に保存し、`loadData` で `pStates` より先に戻す。未編集の利用者にはHTML内のテンプレートがそのまま使われる。一度編集した利用者には、HTML側の `TASKS` を更新しても届かない。
-- ボックス番号は `TASKS` のほか `TASK_GATE_MAP` `TASK_OFFSETS` `GATES` と、保存データ（`pStates` の各キー、`kanryoDates` `itemCheckDates` `taskLinks`）でも使う。番号を付け替えるときは全部を揃え、`migrateBoxNos` のように旧データを移す処理を足して `BOX_NO_VER` を上げる。
+- ボックス番号は `TASKS` のほか `TASK_GATE_MAP` `GATES` と、保存データ（`pStates` の各キー、`kanryoDates` `itemCheckDates` `taskLinks`）でも使う。番号を付け替えるときは全部を揃え、`migrateBoxNos` のように旧データを移す処理を足して `BOX_NO_VER` を上げる。
 - ブラウザのアドレスバーでは `javascript:` が実行できない。保存データを消すときは、開発者ツールのConsoleで実行するか、起動時に一時的な `removeItem` を入れる（戻し忘れに注意）。
 - 全角の括弧や空白が混ざると構文エラーになる。生成したコードは必ず `npm run check` にかける。
 - アプリの版は `APP_VERSION`（0.1.0 から）。変えたら物件一覧の見出し横の `#appVersion`、`package.json`、`CHANGELOG.md` を揃える。修正・見た目は PATCH、機能の追加は MINOR を上げる。エクスポートにも `appVersion` を入れる。
