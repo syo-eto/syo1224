@@ -20,6 +20,20 @@ run('起動時: 利用者選択が表示される', () => {
   const n = d.querySelectorAll('#userGrid .login-card').length;
   if(n!==w.eval('staffList.length') || n===0) throw new Error('カード数='+n);
 });
+run('削除したスタッフ（佐藤理絵）が出ない', () => {
+  if(w.eval('staffList').includes('佐藤　理絵')) throw new Error('初期値に残っている');
+  if(d.getElementById('userGrid').textContent.includes('佐藤　理絵')) throw new Error('選択画面に出ている');
+});
+run('保存データに残っていても起動時に外れる', () => {
+  w.localStorage.setItem('housing_roadmap_v7', JSON.stringify({props:[], staffList:['江藤　奨','佐藤　理絵'], tantoMap:{1:{'企画':'佐藤　理絵','設計':'江藤　奨'}}}));
+  w.loadData();
+  if(w.eval('staffList').includes('佐藤　理絵')) throw new Error('staffListに残った');
+  const m = w.eval('tantoMap[1]');
+  if(m['企画'] || m['設計']!=='江藤　奨') throw new Error('tantoMap='+JSON.stringify(m));
+  w.localStorage.removeItem('housing_roadmap_v7');
+  w.eval("staffList.splice(0, staffList.length, '江藤　奨','佐藤　慎一郎','成田　新太郎','髙橋　勇輝','矢田　弥生'); delete tantoMap[1];");
+  w.showUserSelect();
+});
 run('パスワード入力が無い', () => { if(d.getElementById('page-login')||d.getElementById('loginIdInput')||d.querySelector('input[type=password]')) throw new Error('残存'); });
 run('利用者を選ぶと物件一覧が開く', () => {
   w.selectUser(2);
