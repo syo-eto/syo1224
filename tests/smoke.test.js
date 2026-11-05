@@ -1,7 +1,7 @@
 // 動作確認テスト（jsdomでHTMLを読み込み、主要な操作を実際に動かす）
 // 実行: npm test      （別のファイルを試す: node tests/smoke.test.js path/to/file.html）
 // 注意: アプリの let 変数（props, pStates など）は window に載らないため、w.eval('props') で読む
-// ログイン機能を戻す場合は、「ログイン画面が無い」「ヘッダーのボタン」の2項目を直すこと
+// 起動時は利用者選択（page-user）。パスワード式のログインを戻す場合は「パスワード入力が無い」「ヘッダーのボタン」を直すこと
 const {JSDOM, VirtualConsole} = require('jsdom');
 const fs = require('fs');
 const path = require('path');
@@ -15,8 +15,23 @@ const w = dom.window, d = w.document;
 const run = (label, fn) => { try { fn(); console.log('✅', label); } catch(e){ console.log('❌', label, '→', e.message); errors.push(label+': '+e.message); } };
 const active = () => [...d.querySelectorAll('.page.active')].map(x=>x.id).join(',');
 
-run('起動時: 物件一覧が表示される', () => { if(active()!=='page-list') throw new Error('active='+active()); });
-run('ログイン画面の要素が無い', () => { if(d.getElementById('page-login')||d.getElementById('loginIdInput')) throw new Error('残存'); });
+run('起動時: 利用者選択が表示される', () => {
+  if(active()!=='page-user') throw new Error('active='+active());
+  const n = d.querySelectorAll('#userGrid .login-card').length;
+  if(n!==w.eval('staffList.length') || n===0) throw new Error('カード数='+n);
+});
+run('パスワード入力が無い', () => { if(d.getElementById('page-login')||d.getElementById('loginIdInput')||d.querySelector('input[type=password]')) throw new Error('残存'); });
+run('利用者を選ぶと物件一覧が開く', () => {
+  w.selectUser(2);
+  if(active()!=='page-list') throw new Error('active='+active());
+  const b = d.getElementById('currentUserBtn');
+  if(!b.textContent.includes(w.eval('staffList[2]'))) throw new Error('ヘッダーに利用者名が無い: '+b.textContent);
+});
+run('利用者の切替', () => {
+  w.showUserSelect(); if(active()!=='page-user') throw new Error(active());
+  w.selectUser(1); if(active()!=='page-list') throw new Error(active());
+  if(w.eval('currentUser')!==w.eval('staffList[1]')) throw new Error('currentUser='+w.eval('currentUser'));
+});
 run('ヘッダーのボタン', () => {
   const t = d.querySelector('#page-list .list-hdr').textContent;
   ['管理者設定','担当ボックス','スタッフ管理','物件追加'].forEach(k=>{ if(!t.includes(k)) throw new Error(k+'が無い'); });
@@ -40,7 +55,7 @@ run('担当者設定ダイアログ', () => { w.openTantoDlg(); });
 run('ボックスのモーダルを開く', () => { w.openModal(2); });
 run('一括不要トグル', () => { w.bulkFuyo(); w.bulkFuyo(); });
 run('一覧へ戻る', () => { w.goBack(); });
-run('担当ボックス画面', () => { w.goToMyTasks(); if(active()!=='page-mytasks') throw new Error(active()); });
+run('担当ボックス画面（初期表示は利用者）', () => { w.goToMyTasks(); if(active()!=='page-mytasks') throw new Error(active()); if(d.getElementById('myTaskStaffSel').value!==w.eval('currentUser')) throw new Error('表示中='+d.getElementById('myTaskStaffSel').value); });
 run('担当ボックス: スタッフ切替', () => { const s=d.getElementById('myTaskStaffSel'); s.value=s.options[3].value; w.onMyTaskStaffChange(); });
 run('管理者設定を開く', () => { w.goToList(); w.goToAdmin(); if(active()!=='page-admin') throw new Error(active()); });
 run('管理者設定: 物件管理タブ', () => { w.switchAdminTab('prop'); if(!d.getElementById('propAdminList').textContent.includes('テスト邸')) throw new Error('物件が出ない'); });

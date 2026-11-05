@@ -342,10 +342,19 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 </div>
 
 <!-- 物件一覧 -->
-<div class="page active" id="page-list">
+<!-- 利用者選択（起動時） -->
+<div class="page active" id="page-user">
+  <div class="login-wrap">
+    <div class="login-title">🏠 利用者を選択</div>
+    <div class="login-grid" id="userGrid"></div>
+  </div>
+</div>
+
+<div class="page" id="page-list">
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
+      <button class="admin-btn" id="currentUserBtn" onclick="showUserSelect()" title="利用者を切り替える"></button>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
@@ -1540,6 +1549,29 @@ document.addEventListener('keydown',e=>{
 
 
 let myTaskUser='';
+let myTaskUserPicked=false; // 担当ボックスで別のスタッフを選んだら true
+
+// ===== 利用者選択（起動時に表示。パスワードなし） =====
+let currentUser='';
+function showUserSelect(){
+  if(staffList.length===0){ goToList(); return; }
+  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
+  document.getElementById('page-user').classList.add('active');
+  document.getElementById('userGrid').innerHTML=staffList.map((s,i)=>
+    '<div class="login-card" onclick="selectUser('+i+')"'+(s===currentUser?' style="border-color:var(--color-text-primary,#1a1a1a)"':'')+'>'
+    +'<span class="login-avatar">👤</span><span class="login-card-name">'+s+'</span></div>').join('');
+}
+function selectUser(idx){
+  currentUser=staffList[idx]||'';
+  myTaskUser=currentUser; myTaskUserPicked=false;
+  goToList();
+}
+function renderCurrentUser(){
+  const b=document.getElementById('currentUserBtn');
+  if(!b) return;
+  b.style.display=currentUser?'':'none';
+  b.textContent='👤 '+currentUser+'（切替）';
+}
 function goToMyTasks(){
   document.getElementById('page-list').classList.remove('active');
   document.getElementById('page-rm').classList.remove('active');
@@ -1548,6 +1580,7 @@ function goToMyTasks(){
   // スタッフ選択（全員が切り替え可能）
   const wrap=document.getElementById('myTaskStaffWrap');
   const sel=document.getElementById('myTaskStaffSel');
+  if(currentUser && staffList.includes(currentUser) && !myTaskUserPicked) myTaskUser=currentUser;
   if(!staffList.includes(myTaskUser)) myTaskUser=staffList[0]||'';
   if(wrap) wrap.style.display='flex';
   if(sel){
@@ -1560,7 +1593,7 @@ function goToMyTasks(){
 function onMyTaskStaffChange(){
   const sel=document.getElementById('myTaskStaffSel');
   myTaskActiveStates=new Set();
-  if(sel){ myTaskUser=sel.value; renderMyTasks(sel.value); }
+  if(sel){ myTaskUser=sel.value; myTaskUserPicked=true; renderMyTasks(sel.value); }
 }
 
 let myTaskActiveStates = new Set(); // 空=全表示
@@ -1746,10 +1779,12 @@ function goToAdmin(){
 }
 
 function goToList(){
+  document.getElementById('page-user').classList.remove('active');
   document.getElementById('page-admin').classList.remove('active');
   document.getElementById('page-mytasks').classList.remove('active');
   document.getElementById('page-list').classList.add('active');
   renderPropList();
+  renderCurrentUser();
 }
 
 function switchAdminTab(tab){
@@ -2101,6 +2136,8 @@ bulkFuyo = function(){ _origBulkFuyo(); scheduleSave(); };
 loadData();
 
 renderPropList();
+renderCurrentUser();
+showUserSelect();
 </script>
 
 <!-- PWA manifest インライン -->

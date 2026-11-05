@@ -1,13 +1,13 @@
 # 注文住宅ロードマップ管理アプリ
 
 注文住宅の工程を物件ごとに管理する、HTML単一ファイルのWebアプリ。ビルド不要、外部ライブラリなし。
-現行版は `housing_roadmap_v7.html`（約2,100行）。ログイン・アカウント機能は外してある（ログイン版は `archive/` に保存）。
+現行版は `housing_roadmap_v7.html`（約2,100行）。ログイン・アカウント機能は外してある（ログイン版は `archive/` に保存）。起動時は、パスワードなしで利用者を選ぶ画面を出す。
 利用者は日本語話者。やり取りも画面の文言も日本語で行う。
 
 ## 進め方
 
 - 初回のみ `npm install`。
-- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで25項目の操作を実行）を通す。
+- 編集のたびに `npm run check`（構文）と `npm test`（jsdomで27項目の操作を実行）を通す。
 - 構文が通っても画面が崩れることがある（過去に何度かあった）。画面に関わる変更は、`tests/smoke.test.js` にその操作を足してから直す。
 - ファイルが大きい（`TASKS` の184ボックスが1行に入っている）。全体を読み込まず、`grep -n` と `sed -n` で必要な箇所だけ見る。
 - 変更は小さく、1つずつ動作確認する。利用者は変更のたびにファイルを開いて確認する。
@@ -17,6 +17,7 @@
 | 領域 | 場所 |
 | --- | --- |
 | データ定数 | 644〜690行付近：`TASKS` `PROP_STATUSES` `TASK_GATE_MAP` `TASK_OFFSETS` `GROUPS` `PCOLS` `PREP_ROWS` `CATS_TANTO` `props` `pStates` `staffList` `tantoMap` `kanryoDates` `itemCheckDates` `taskLinks` |
+| 利用者選択 | `showUserSelect` `selectUser` `renderCurrentUser` `currentUser`（保存しない。起動のたびに選ぶ） |
 | 物件一覧 | `renderPropList` `sortedProps` `renderStatusFilters` |
 | ステータス判定 | `phasePct` `calcPropStatus` `getPropStatus` `overallPct` |
 | ロードマップ | `openProp` `render` |
@@ -50,7 +51,7 @@
 
 - `let` で宣言した変数（`props` `pStates` など）は `window` に載らない。テストでは `w.eval('props')` で読む。
 - `toggleDone` `toggleFuyo` `saveHelp` `saveTanto` `saveGate` `addProperty` `cycleState` `bulkFuyo` は、末尾で関数を包んで `scheduleSave()` を呼んでいる。ほかに保存が必要な処理は、自分で `scheduleSave()` を呼ぶ。
-- 起動の順序は `loadData()` → `renderPropList()`。保存先のキーは `localStorage` の `housing_roadmap_v7`。
+- 起動の順序は `loadData()` → `renderPropList()` → `showUserSelect()`。スタッフが0人なら選択画面を飛ばして物件一覧を開く。保存先のキーは `localStorage` の `housing_roadmap_v7`。
 - `TASKS` は、ボックス管理で編集したとき（`tasksEdited` が true）だけ保存キーの `tasks` に保存し、`loadData` で `pStates` より先に戻す。未編集の利用者にはHTML内のテンプレートがそのまま使われる。一度編集した利用者には、HTML側の `TASKS` を更新しても届かない。
 - ブラウザのアドレスバーでは `javascript:` が実行できない。保存データを消すときは、開発者ツールのConsoleで実行するか、起動時に一時的な `removeItem` を入れる（戻し忘れに注意）。
 - 全角の括弧や空白が混ざると構文エラーになる。生成したコードは必ず `npm run check` にかける。
