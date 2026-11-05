@@ -1,5 +1,6 @@
 {
   "name": "housing-roadmap",
+  "version": "0.2.3",
   "private": true,
   "description": "注文住宅ロードマップ管理アプリ（HTML単一ファイル）",
   "scripts": {
