@@ -274,6 +274,30 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   /* 物件一覧：表をカードに切り替え */
   .prop-table-wrap{display:none}
   .prop-cards{display:flex;flex-direction:column;gap:10px}
+  /* ロードマップ：見出し・絞り込み */
+  .stats{gap:4px}
+  .stat{padding:.4rem .2rem}
+  #groupTabs,#catTabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  #groupTabs>*,#catTabs>*{flex-shrink:0}
+  .toolbar input{flex-basis:100%}
+  .toolbar select{flex:1;min-width:0}
+  /* ロードマップ：表を1ボックス1枚のカードに */
+  #page-rm table.main thead{display:none}
+  #page-rm table.main,#page-rm table.main tbody{display:block}
+  #page-rm table.main tr{display:flex;flex-wrap:wrap;align-items:center;column-gap:6px;row-gap:4px;padding:9px 10px 9px 36px;position:relative;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5)}
+  #page-rm table.main tr:last-child{border-bottom:none}
+  #page-rm table.main td{display:block;padding:0;border:none!important;background:none!important}
+  #page-rm table.main td.empty{flex:1;padding:2rem}
+  #page-rm .rc-no{position:absolute;left:10px;top:11px;width:22px}
+  #page-rm .rc-name{flex:1 1 calc(100% - 80px);min-width:0}
+  #page-rm .rc-st{flex-shrink:0;margin-left:auto}
+  #page-rm .rc-grp{order:5}
+  #page-rm .rc-cat{order:6}
+  #page-rm .rc-tanto{order:7;font-size:12px!important}
+  #page-rm .rc-due{order:8;font-size:12px!important}
+  #page-rm .rc-due::before{content:"期日 "}
+  #page-rm .rc-kb,#page-rm .rc-none{display:none!important}
+  #page-rm table.main .badge{font-size:11px}
 }
 .pc-card{border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:12px;padding:12px;background:var(--color-background-primary,#fff)}
 .pc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer}
@@ -412,7 +436,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.2.3（2026-11-05）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.2.4（2026-11-06）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1357,18 +1381,20 @@ function render(){
     const kb=getKanryobi(t.no);
     // 全タスクが不要のボックス：状態は「完了」のまま、表示だけ「不要」
     const allFuyo=st==='完了'&&isBoxFuyo(curPid,t.no);
+    const tanto=(['会議','打合せ'].includes(t.category))?'―':((tantoMap[curPid]&&tantoMap[curPid][t.category])||t.tanto||'―');
+    const dueTxt=fmtDue(getEffectiveDue(t.no));
     return '<tr class="'+(st==='完了'?'done-row':'')+'">'
-      +'<td class="no-col">'+t.no+'</td>'
-      +'<td><span class="tlink" onclick="openModal('+t.no+')">'
+      +'<td class="no-col rc-no">'+t.no+'</td>'
+      +'<td class="rc-name"><span class="tlink" onclick="openModal('+t.no+')">'
       +'<span class="tlink-top">'+(hasHelp?'<span class="help-dot"></span>':'')+'<span class="tname-txt">'+t.name+'</span>'+(prog?'<span class="cnt">'+prog.doneN+'/'+prog.activeTotal+'</span>':'')+'</span>'
       +(kb!=='―'?'<span class="kanryobi-txt">✔ '+kb+'</span>':'')
       +'</span></td>'
-      +'<td>'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
-      +'<td>'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
-      +'<td style="font-size:13px;color:var(--color-text-secondary,#666)">'+((['会議','打合せ'].includes(t.category))?'―':((tantoMap[curPid]&&tantoMap[curPid][t.category])||t.tanto||'―'))+'</td>'
-      +'<td style="font-size:13px;white-space:nowrap">'+fmtDue(getEffectiveDue(t.no))+'</td>'
-      +'<td style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
-      +'<td>'+(allFuyo?'<span class="badge sFuyo" title="全タスクが不要（進捗では完了扱い）">不要</span>':'<span class="badge s'+st+'">'+st+'</span>')+'</td></tr>';
+      +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
+      +'<td class="rc-cat">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
+      +'<td class="rc-tanto'+(tanto==='―'?' rc-none':'')+'" style="font-size:13px;color:var(--color-text-secondary,#666)">'+tanto+'</td>'
+      +'<td class="rc-due'+(!dueTxt||dueTxt==='―'?' rc-none':'')+'" style="font-size:13px;white-space:nowrap">'+dueTxt+'</td>'
+      +'<td class="rc-kb" style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
+      +'<td class="rc-st">'+(allFuyo?'<span class="badge sFuyo" title="全タスクが不要（進捗では完了扱い）">不要</span>':'<span class="badge s'+st+'">'+st+'</span>')+'</td></tr>';
   }).join('');
 }
 
@@ -2087,7 +2113,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.2.3';
+const APP_VERSION = '0.2.4';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う

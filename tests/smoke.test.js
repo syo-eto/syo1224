@@ -45,6 +45,13 @@ run('スマートフォン用の物件カード', () => {
   if(c.querySelectorAll('.pc-ph.cur').length!==1) throw new Error('今のフェーズの印が1つでない');
 });
 run('物件を開く(ロードマップ)', () => { w.openProp(w.eval('props[0].id')); if(active()!=='page-rm') throw new Error(active()); });
+run('スマートフォン用：ロードマップの行に列の印（カード表示用）', () => {
+  const rows = [...d.querySelectorAll('#tbody tr')];
+  if(rows.length!==w.eval('TASKS.length')) throw new Error('行数 '+rows.length);
+  ['rc-no','rc-name','rc-grp','rc-cat','rc-tanto','rc-due','rc-kb','rc-st'].forEach(c=>{ if(!rows[0].querySelector('.'+c)) throw new Error(c+'が無い'); });
+  if(!rows[0].querySelector('.rc-tanto').classList.contains('rc-none')) throw new Error('未設定の担当に rc-none が無い');
+  if(d.querySelector('#page-mytasks .rc-name')) throw new Error('担当ボックスの表にまで印が付いた');
+});
 run('ゲート設定リンクが表示される', () => { if(d.getElementById('gateLinkBtn').style.display==='none') throw new Error('非表示'); });
 run('ゲート設定ダイアログ', () => { w.openGateDlg(); });
 run('担当者設定ダイアログ', () => { w.openTantoDlg(); if(d.getElementById('tantoStaffSection').style.display==='none') throw new Error('通常の担当者設定でスタッフ一覧が消えた'); });
