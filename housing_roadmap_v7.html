@@ -298,6 +298,10 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   #page-rm .rc-due::before{content:"期日 "}
   #page-rm .rc-kb,#page-rm .rc-none{display:none!important}
   #page-rm table.main .badge{font-size:11px}
+  /* チェック画面：タスクの文を少し小さく、チェック欄を少し細く */
+  .cl-header,.cl-item{grid-template-columns:1fr 44px 44px 44px 16px;gap:3px}
+  .cl-text{font-size:13px;line-height:1.45}
+  .cl-note,.cl-helpmemo{font-size:12px}
 }
 .pc-card{border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:12px;padding:12px;background:var(--color-background-primary,#fff)}
 .pc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer}
