@@ -50,7 +50,7 @@ run('スマートフォン用：ロードマップの行に列の印（カード
   if(rows.length!==w.eval('TASKS.length')) throw new Error('行数 '+rows.length);
   ['rc-no','rc-name','rc-grp','rc-cat','rc-tanto','rc-due','rc-kb','rc-st'].forEach(c=>{ if(!rows[0].querySelector('.'+c)) throw new Error(c+'が無い'); });
   if(!rows[0].querySelector('.rc-tanto').classList.contains('rc-none')) throw new Error('未設定の担当に rc-none が無い');
-  if(d.querySelector('#page-mytasks .rc-name')) throw new Error('担当ボックスの表にまで印が付いた');
+  if(!d.querySelector('#page-rm table.rc-tbl')) throw new Error('ロードマップの表に rc-tbl が無い');
 });
 run('ゲート設定リンクが表示される', () => { if(d.getElementById('gateLinkBtn').style.display==='none') throw new Error('非表示'); });
 run('ゲート設定ダイアログ', () => { w.openGateDlg(); });
@@ -70,6 +70,24 @@ run('一括不要：状態は完了のまま、表には「不要」と出る', 
 });
 run('一覧へ戻る', () => { w.goBack(); });
 run('担当ボックス画面', () => { w.goToMyTasks(); if(active()!=='page-mytasks') throw new Error(active()); });
+run('スマートフォン用：管理者設定のボックス一覧に列の印（カード表示用）', () => {
+  w.goToAdmin(); w.switchAdminTab('task');
+  const row = d.querySelector('#taskEditList table.te-tbl tbody tr');
+  if(!row) throw new Error('te-tbl の表が無い');
+  ['te-no','te-name','te-grp','te-cat','te-ops'].forEach(c=>{ if(!row.querySelector('.'+c)) throw new Error(c+'が無い'); });
+  if(!row.querySelector('.te-ops button')) throw new Error('編集ボタンが無い');
+  w.goToMyTasks();
+});
+run('スマートフォン用：担当ボックスの行に列の印（カード表示用）', () => {
+  const pid = w.eval('props[0].id');
+  w.eval('tantoMap['+pid+']=Object.assign(tantoMap['+pid+']||{}, {"企画":"担当テスト"})');
+  w.renderMyTasks('担当テスト');
+  const tbl = d.querySelector('#myTaskBody table.rc-tbl');
+  if(!tbl) throw new Error('rc-tbl の表が無い');
+  const row = tbl.querySelector('tbody tr');
+  ['rc-no','rc-name','rc-grp','rc-cat','rc-due','rc-kb','rc-st'].forEach(c=>{ if(!row.querySelector('.'+c)) throw new Error(c+'が無い'); });
+  w.eval('delete tantoMap['+pid+']["企画"]');
+});
 run('担当ボックス: スタッフ切替', () => { const s=d.getElementById('myTaskStaffSel'); s.value=s.options[3].value; w.onMyTaskStaffChange(); });
 run('管理者設定を開く', () => { w.goToList(); w.goToAdmin(); if(active()!=='page-admin') throw new Error(active()); });
 run('管理者設定: 物件管理タブ', () => { w.switchAdminTab('prop'); if(!d.getElementById('propAdminList').textContent.includes('テスト邸')) throw new Error('物件が出ない'); });
