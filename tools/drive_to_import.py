@@ -40,7 +40,7 @@ APP={}
 for t in app['tasks']: APP.setdefault(norm(t['name']),[]).append(t)
 STAT={'完了':'完了','作業中':'進行中','進行中':'進行中','着手前':'着手前'}
 CATS=['企画','企画補助','建築家','設計チェック','構造','設計作図','IC','申請','基礎監督','現場監督','工務補助','監査','技術']
-res={'version':'7','boxNoVer':3,'exportedAt':dt.datetime.now().isoformat(),'props':[],'pStates':{},'tantoMap':{},'gateDates':{},'kanryoDates':{},'itemCheckDates':{},'staffList':[]}
+res={'version':'7','boxNoVer':4,'exportedAt':dt.datetime.now().isoformat(),'props':[],'pStates':{},'tantoMap':{},'gateDates':{},'kanryoDates':{},'itemCheckDates':{},'staffList':[]}
 import os
 dash=pd.read_excel(os.path.join(os.path.dirname(os.path.abspath(files[0])),'dashboard.xlsx'),sheet_name='新築・フルリノベ',header=None)
 A=[str(v).strip() if not isna(v) else '' for v in dash[0]]

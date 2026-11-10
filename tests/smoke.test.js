@@ -235,6 +235,32 @@ run('38 実行予算 → 原価管理：保存データを差し替える', () =
   w9.openProp(1); w9.openModal(38);
   if(!w9.document.body.textContent.includes('原価管理表のスプレットシート')) throw new Error('38の中身が表示されない');
 });
+run('11/9 テンプレート：増えたタスクに合わせてチェック・チェック日・添付の位置を移す', () => {
+  const tpl = w.eval('JSON.parse(JSON.stringify(TASKS))');
+  const M = w.eval('TEMPLATE_V4');
+  // 更新前のボックス一覧（編集済みの利用者）を作る。101 は利用者が手を加えたもの
+  const oldBox = no => { const b = tpl.find(t=>t.no===no); return Object.assign({}, b, {items: M[no].o2n.map(ni=>Object.assign({}, b.items[ni]))}); };
+  const tasks = tpl.map(t=>M[t.no] ? oldBox(t.no) : t);
+  const b101 = tasks.find(t=>t.no===101); b101.items = b101.items.concat([{t:'自分で足したタスク',c:false,f:false,h:false,hm:'',n:'',r:'',j:''}]);
+  const d94 = Array(32).fill(false); d94[18]=true; d94[26]=true;
+  const d93 = Array(35).fill(false); d93[32]=true;
+  const st = {ts:{'94':'進行中','93':'完了'}, done:{'94':d94,'93':d93,'101':[true,false,false,false]}, fuyo:{'94':Array(32).fill(false)}, help:{}, memo:{'94':Array(32).fill('')}, overrideDue:{}};
+  const data = {boxNoVer:3, props:[{id:1,name:'旧邸'}], nextPid:2, tasks, pStates:{1:st},
+    itemCheckDates:{'1_94_26':'2026-10-01','1_94_5':'2026-10-02'}, taskLinks:{'93_34':[{title:'メール',url:'https://x'}]}};
+  const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  const T = wv.eval('TASKS'), t94 = T.find(t=>t.no===94), t93 = T.find(t=>t.no===93);
+  if(t94.items.length!==35 || t93.items.length!==36) throw new Error('保存したボックス一覧にタスクが入らない '+t94.items.length+'/'+t93.items.length);
+  if(!t94.items[18].t.includes('-70') || !t94.items[7].t.includes('小上がりでない場合')) throw new Error('94の新しい文言');
+  if(T.find(t=>t.no===101).items.length!==4) throw new Error('手を加えた101を変えてしまった');
+  const dn = wv.eval('pStates[1].done[94]');
+  if(dn.length!==35 || !dn[19] || !dn[28] || dn.filter(Boolean).length!==2) throw new Error('94のチェックの位置 '+JSON.stringify(dn));
+  if(!wv.eval('pStates[1].done[93][33]') || wv.eval('pStates[1].done[93][32]')) throw new Error('93のチェックの位置');
+  if(wv.eval('itemCheckDates["1_94_28"]')!=='2026-10-01' || wv.eval('itemCheckDates["1_94_5"]')!=='2026-10-02' || wv.eval('itemCheckDates["1_94_26"]')) throw new Error('チェック日');
+  if(!wv.eval('taskLinks["93_35"]') || wv.eval('taskLinks["93_34"]')) throw new Error('添付');
+  wv.openProp(1); wv.openModal(94);
+  if(!wv.document.body.textContent.includes('垂木受けの下に梁がある')) throw new Error('94の中身が表示されない');
+});
 run('埋め込んだドライブのデータを起動時に一度だけ取り込む', () => {
   const seed = {exportedAt:'2026-11-04T00:00:00', boxNoVer:3, props:[{id:1,name:'埋込邸',addr:'',tanto:'',date:'',ki:'',status:''}],
     pStates:{1:{ts:{'1':'完了'},done:{},fuyo:{},help:{},memo:{},overrideDue:{}}}, tantoMap:{}, gateDates:{}, kanryoDates:{}, itemCheckDates:{}};
@@ -536,7 +562,7 @@ run('旧番号の保存データを新番号へ移す', () => {
   // 保存し直しても、もう一度ずらさない
   w4.saveData();
   const saved = w4.localStorage.getItem('housing_roadmap_v7');
-  if(JSON.parse(saved).boxNoVer!==3) throw new Error('boxNoVer が保存されていない');
+  if(JSON.parse(saved).boxNoVer!==w4.eval('BOX_NO_VER')) throw new Error('boxNoVer が保存されていない');
   const w5 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
   checkMigrated(w5, '再読み込み');
