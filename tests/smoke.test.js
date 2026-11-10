@@ -261,6 +261,51 @@ run('11/9 テンプレート：増えたタスクに合わせてチェック・�
   wv.openProp(1); wv.openModal(94);
   if(!wv.document.body.textContent.includes('垂木受けの下に梁がある')) throw new Error('94の中身が表示されない');
 });
+run('備考：補足メモのリンク表示と、物件ごとの備考の保存', () => {
+  const html2 = html;
+  const wn = new JSDOM(html2, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  const dn = wn.document;
+  wn.openAddDlg(); dn.getElementById('fName').value='備考邸'; wn.addProperty();
+  const pid = wn.eval('props[0].id');
+  wn.openProp(pid); wn.openModal(2);
+  // テンプレートの備考（補足メモ）が出て、URL はリンクになる。チェック画面に補足メモの入力欄は無い
+  const a = dn.querySelector('#mBody .cl-note a.note-link');
+  if(!a || !a.href.startsWith('https://www.takara-standard.co.jp/')) throw new Error('補足メモのリンク');
+  if(dn.querySelector('#mBody .te-note-input, #mBody .cl-note input, #mBody .cl-note textarea')) throw new Error('チェック画面で補足メモを編集できてしまう');
+  // 物件ごとの備考
+  wn.openPNote(2,1); dn.getElementById('pnoteText').value='SR 11/20 10時 予約済み <b>';
+  wn.savePNote();
+  if(wn.eval('pStates['+pid+'].note[2][1]')!=='SR 11/20 10時 予約済み <b>') throw new Error('備考が保存されない');
+  const pn = dn.getElementById('pnote-2-1');
+  if(!pn.textContent.includes('予約済み') || pn.querySelector('b')) throw new Error('備考の表示（エスケープ）');
+  if(wn.eval('TASKS.find(t=>t.no===2).items[1].n').includes('予約済み')) throw new Error('全物件共通の補足メモが変わった');
+  // 他の物件には出ない
+  wn.openAddDlg(); dn.getElementById('fName').value='別邸'; wn.addProperty();
+  const pid2 = wn.eval('props.find(p=>p.name==="別邸").id');
+  wn.openProp(pid2); wn.openModal(2);
+  if(dn.getElementById('pnote-2-1').textContent.includes('予約済み')) throw new Error('他の物件に備考が出た');
+  // 保存して開き直しても残る
+  wn.saveData();
+  const saved = wn.localStorage.getItem('housing_roadmap_v7');
+  const wr = new JSDOM(html2, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', saved); }}).window;
+  if(wr.eval('pStates['+pid+'].note[2][1]')!=='SR 11/20 10時 予約済み <b>') throw new Error('再読み込みで備考が消えた');
+  // エクスポートにも入る
+  let blobText=''; wn.Blob=function(parts){ blobText=parts.join(''); }; wn.URL.createObjectURL=()=>'blob:x';
+  wn.exportAllData();
+  if(!blobText.includes('予約済み')) throw new Error('エクスポートに備考が入らない');
+});
+run('備考：編集済みのボックス一覧にも、空の補足メモだけテンプレートの備考を補う', () => {
+  const tpl = w.eval('JSON.parse(JSON.stringify(TASKS))');
+  tpl.forEach(t=>t.items.forEach(i=>{ i.n=''; }));
+  tpl.find(t=>t.no===4).items[3].n='自分で書いたメモ';
+  const data = {boxNoVer:4, props:[], nextPid:1, tasks:tpl};
+  const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  if(!wv.eval('TASKS.find(t=>t.no===2).items[1].n').includes('WEB予約')) throw new Error('空の補足メモが補われない');
+  if(wv.eval('TASKS.find(t=>t.no===4).items[3].n')!=='自分で書いたメモ') throw new Error('書いてあった補足メモを上書きした');
+});
 run('埋め込んだドライブのデータを起動時に一度だけ取り込む', () => {
   const seed = {exportedAt:'2026-11-04T00:00:00', boxNoVer:3, props:[{id:1,name:'埋込邸',addr:'',tanto:'',date:'',ki:'',status:''}],
     pStates:{1:{ts:{'1':'完了'},done:{},fuyo:{},help:{},memo:{},overrideDue:{}}}, tantoMap:{}, gateDates:{}, kanryoDates:{}, itemCheckDates:{}};

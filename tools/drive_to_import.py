@@ -6,6 +6,7 @@
 import sys,json,re,datetime as dt,pandas as pd
 S=sys.argv[1]; out=sys.argv[2]; files=sys.argv[3:]
 app=json.load(open(S+'/conv/app.json',encoding='utf8'))
+NOTE_SKIP=re.compile(r'^(←?4/18.*更新|つづきはここから)$')
 def norm(x): return re.sub(r'\s','',str(x or '')).replace('〜','~').replace('～','~').replace('タスク管理表','ボックス管理表')
 def isna(v):
     try: return pd.isna(v)
@@ -40,7 +41,7 @@ APP={}
 for t in app['tasks']: APP.setdefault(norm(t['name']),[]).append(t)
 STAT={'完了':'完了','作業中':'進行中','進行中':'進行中','着手前':'着手前'}
 CATS=['企画','企画補助','建築家','設計チェック','構造','設計作図','IC','申請','基礎監督','現場監督','工務補助','監査','技術']
-res={'version':'7','boxNoVer':4,'exportedAt':dt.datetime.now().isoformat(),'props':[],'pStates':{},'tantoMap':{},'gateDates':{},'kanryoDates':{},'itemCheckDates':{},'staffList':[]}
+res={'version':'7','boxNoVer':5,'exportedAt':dt.datetime.now().isoformat(),'props':[],'pStates':{},'tantoMap':{},'gateDates':{},'kanryoDates':{},'itemCheckDates':{},'staffList':[]}
 import os
 dash=pd.read_excel(os.path.join(os.path.dirname(os.path.abspath(files[0])),'dashboard.xlsx'),sheet_name='新築・フルリノベ',header=None)
 A=[str(v).strip() if not isna(v) else '' for v in dash[0]]
@@ -68,12 +69,12 @@ for pid,f in enumerate(files,1):
     res['props'].append({'id':pid,'name':name,'addr':addr,'tanto':'','date':chakko or '','ki':ki,'status':''})
     res['tantoMap'][pid]=tanto
     res['gateDates'][pid]={'着工':chakko} if chakko else {}
-    ps={'ts':{},'done':{},'fuyo':{},'help':{},'memo':{},'overrideDue':{}}
+    ps={'ts':{},'done':{},'fuyo':{},'help':{},'memo':{},'note':{},'overrideDue':{}}
     BH=[re.sub(r'\s','',str(v)) for v in W['ボックス一覧'].iloc[1]]
     CS,CD,CK=BH.index('状態'),BH.index('期日'),BH.index('完了実績')
     CB=BH.index('一括不要') if '一括不要' in BH else None
     b=W['ボックス一覧'].iloc[2:].copy(); b[0]=b[0].ffill()
-    seen=set(); miss=[]; itemsMiss=0; itemsHit=0; nBulk=0
+    seen=set(); miss=[]; itemsMiss=0; itemsHit=0; nBulk=0; nNotes=0
     nJikko=sum(1 for v in b[3] if norm(v)=='実行予算')
     for _,row in b.iterrows():
         st=row[CS]
@@ -97,7 +98,7 @@ for pid,f in enumerate(files,1):
         # ボックスの中身
         sn=next((s for s in sheets if s==str(nm).strip() or s==t['name']),None) or next((s for s in sheets if norm(s)==norm(nm)),None)
         n=len(t['items'])
-        done=[False]*n; fuyo=[False]*n; hlp=[False]*n; memo=['']*n
+        done=[False]*n; fuyo=[False]*n; hlp=[False]*n; memo=['']*n; pnote=['']*n
         if sn:
             sh=W[sn]
             hr=next((r for r in range(min(10,len(sh))) if any(str(v).strip()=='チェック' for v in sh.iloc[r])),None)
@@ -107,18 +108,23 @@ for pid,f in enumerate(files,1):
                 ct=col('すること') if col('すること') is not None else col('チェック項目')
                 if ct is None and col('カテゴリー') is not None: ct=col('カテゴリー')+1
                 cc,cf,ch,cd,cm=col('チェック'),col('不要'),col('HELP！😢'),col('実施日'),col('HELP！😢メモ')
+                cn=col('備考') if col('備考') is not None else col('メモ')
                 rows=[]
                 for r in range(hr+1,len(sh)):
                     tx=norm(sh.iloc[r,ct]) if ct is not None and not isna(sh.iloc[r,ct]) else ''
                     if not tx: continue
                     rows.append(dict(t=tx,c=truthy(sh.iloc[r,cc]) if cc is not None else False,f=truthy(sh.iloc[r,cf]) if cf is not None else False,
                         h=truthy(sh.iloc[r,ch]) if ch is not None else False,d=ymd(sh.iloc[r,cd]) if cd is not None else None,
-                        m=str(sh.iloc[r,cm]) if cm is not None and not isna(sh.iloc[r,cm]) else '',u=False))
+                        m=str(sh.iloc[r,cm]) if cm is not None and not isna(sh.iloc[r,cm]) else '',
+                        n=re.sub(r'\s*\n\s*',' ',str(sh.iloc[r,cn])).strip() if cn is not None and not isna(sh.iloc[r,cn]) else '',u=False))
                 for idx,it in enumerate(t['items']):
                     m=next((r for r in rows if not r['u'] and r['t']==norm(it)),None)
                     if not m: continue
                     m['u']=True; itemsHit+=1
                     fuyo[idx]=m['f']; done[idx]=m['c'] and not m['f']; hlp[idx]=m['h']; memo[idx]=m['m']
+                    # 備考：テンプレートの補足メモ（URL を除く）と違うものだけ、この物件の備考に入れる。シート編集の印は入れない
+                    tfull=norm((t.get('notes') or ['']*n)[idx] or ''); mn=norm(m['n'])
+                    if mn and mn!=norm(re.sub(r'https?://\S+','',(t.get('notes') or ['']*n)[idx] or '')) and mn not in tfull and not NOTE_SKIP.match(m['n']): pnote[idx]=m['n']; nNotes+=1
                     if (done[idx] or fuyo[idx]) and m['d']: res['itemCheckDates'][f'{pid}_{no}_{idx}']=m['d']
                 itemsMiss+=sum(1 for r in rows if not r['u'] and (r['c'] or r['f'] or r['h']))
                 um=[r['t'][:25] for r in rows if not r['u'] and (r['c'] or r['f'] or r['h'])]
@@ -126,17 +132,17 @@ for pid,f in enumerate(files,1):
         if CB is not None and truthy(row[CB]):
             fuyo=[True]*n; done=[False]*n; ps['ts'][no]='完了'; nBulk+=1
             for k in [k for k in res['itemCheckDates'] if k.startswith(f'{pid}_{no}_')]: del res['itemCheckDates'][k]
-        ps['done'][no]=done; ps['fuyo'][no]=fuyo; ps['help'][no]=hlp; ps['memo'][no]=memo
+        ps['done'][no]=done; ps['fuyo'][no]=fuyo; ps['help'][no]=hlp; ps['memo'][no]=memo; ps['note'][no]=pnote
     # このタスク管理表に無いボックスは、全タスク不要（完了扱い）にする
     # ただし、同じフェーズの他のボックスが全部完了しているときだけ（先のフェーズのボックスは着手前のまま）
     absent=[t for t in app['tasks'] if t['no'] not in seen and all(ps['ts'].get(u['no'])=='完了' for u in app['tasks'] if u['group']==t['group'] and u['no'] in seen)]
     report_absent=[t['no'] for t in absent]
     for t in absent:
         n=len(t['items']); ps['ts'][t['no']]='完了'
-        ps['done'][t['no']]=[False]*n; ps['fuyo'][t['no']]=[True]*n; ps['help'][t['no']]=[False]*n; ps['memo'][t['no']]=['']*n
+        ps['done'][t['no']]=[False]*n; ps['fuyo'][t['no']]=[True]*n; ps['help'][t['no']]=[False]*n; ps['memo'][t['no']]=['']*n; ps['note'][t['no']]=['']*n
     res['pStates'][pid]=ps
     cnt={s:list(ps['ts'].values()).count(s) for s in ('完了','進行中','着手前')}
-    report.append(dict(name=name,addr=addr,ki=ki,chakko=chakko,boxes=len(seen),missingBoxes=miss,state=cnt,itemsMatched=itemsHit,checkedRowsNotMatched=itemsMiss,tanto=tanto,appBoxesNotInSheet=[t['no'] for t in app['tasks'] if t['no'] not in seen],markedFuyo=report_absent,bulkFuyo=nBulk))
+    report.append(dict(name=name,addr=addr,ki=ki,chakko=chakko,boxes=len(seen),missingBoxes=miss,state=cnt,itemsMatched=itemsHit,checkedRowsNotMatched=itemsMiss,tanto=tanto,appBoxesNotInSheet=[t['no'] for t in app['tasks'] if t['no'] not in seen],markedFuyo=report_absent,bulkFuyo=nBulk,propNotes=nNotes))
 res['removeStaff']=sorted(GAICHU|TOKUREI)
 if GAICHU and '外注' not in res['staffList']: res['staffList'].append('外注')  # 保存済みのスタッフ一覧に外注が無い人向け
 json.dump(res,open(out,'w',encoding='utf8'),ensure_ascii=False)
