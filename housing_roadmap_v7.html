@@ -274,6 +274,63 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   /* 物件一覧：表をカードに切り替え */
   .prop-table-wrap{display:none}
   .prop-cards{display:flex;flex-direction:column;gap:10px}
+  /* ロードマップ：見出し・絞り込み */
+  .stats{gap:4px}
+  .stat{padding:.4rem .2rem}
+  #groupTabs,#catTabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  #groupTabs>*,#catTabs>*{flex-shrink:0}
+  .toolbar input{flex-basis:100%}
+  .toolbar select{flex:1;min-width:0}
+  /* ロードマップ・担当ボックス：表を1ボックス1枚のカードに */
+  table.rc-tbl thead{display:none}
+  table.rc-tbl,table.rc-tbl tbody{display:block}
+  table.rc-tbl tr{display:flex;flex-wrap:wrap;align-items:center;column-gap:6px;row-gap:4px;padding:9px 10px 9px 36px;position:relative;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5)}
+  table.rc-tbl tr:last-child{border-bottom:none}
+  table.rc-tbl td{display:block;padding:0;border:none!important;background:none!important}
+  table.rc-tbl td.empty{flex:1;padding:2rem}
+  .rc-tbl .rc-no{position:absolute;left:10px;top:11px;width:22px}
+  .rc-tbl .rc-name{flex:1 1 calc(100% - 80px);min-width:0}
+  .rc-tbl .rc-st{flex-shrink:0;margin-left:auto}
+  .rc-tbl .rc-grp{order:5}
+  .rc-tbl .rc-cat{order:6}
+  .rc-tbl .rc-tanto{order:7;font-size:12px!important}
+  .rc-tbl .rc-due{order:8;font-size:12px!important}
+  .rc-tbl .rc-due::before{content:"期日 "}
+  .rc-tbl .rc-kb,.rc-tbl .rc-none{display:none!important}
+  table.rc-tbl .badge{font-size:11px}
+  /* 管理者設定のボックス一覧：1ボックス1枚のカードに（編集・削除は右上） */
+  table.te-tbl thead{display:none}
+  table.te-tbl,table.te-tbl tbody{display:block}
+  table.te-tbl tr{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;padding:8px 10px 8px 40px;position:relative}
+  table.te-tbl td{display:block;padding:0!important}
+  table.te-tbl .te-no{position:absolute;left:10px;top:12px}
+  table.te-tbl .te-name{flex:1 1 calc(100% - 120px);min-width:0}
+  table.te-tbl .te-ops{flex-shrink:0;margin-left:auto}
+  table.te-tbl .te-ops button{font-size:12px!important;padding:5px 10px!important}
+  table.te-tbl .te-grp,table.te-tbl .te-cat{order:5}
+  /* ボックス編集：タスクの入力を広く（担当職種は下の行） */
+  .te-item-grid{grid-template-columns:18px 1fr auto!important;row-gap:4px!important}
+  .te-item-grid .te-item-del{grid-column:3;grid-row:1}
+  .te-item-grid .te-item-role{grid-column:2;grid-row:2;justify-self:start}
+  /* 担当ボックス：見出しの表示中を2行目に */
+  #page-mytasks .rm-hdr-row{flex-wrap:wrap}
+  #page-mytasks .rm-title{font-size:17px}
+  #myTaskStaffWrap{flex-basis:100%}
+  #myTaskStaffSel{flex:1}
+  /* チェック画面：タスクの文を少し小さく、チェック欄を少し細く */
+  .cl-header,.cl-item{grid-template-columns:1fr 44px 44px 44px 16px;gap:3px}
+  .cl-text{font-size:13px;line-height:1.45}
+  .cl-note,.cl-helpmemo{font-size:12px}
+}
+@media (min-width:601px) and (max-width:1024px){
+  /* タブレット：物件一覧の見出しを折り返し、表の代わりにカードを2列で */
+  .list-hdr{flex-wrap:wrap;gap:.6rem}
+  .list-title{white-space:nowrap}
+  #curUserWrap{white-space:nowrap}
+  .list-actions{flex-wrap:wrap}
+  .list-actions button{white-space:nowrap}
+  .prop-table-wrap{display:none}
+  .prop-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
 }
 .pc-card{border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:12px;padding:12px;background:var(--color-background-primary,#fff)}
 .pc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer}
@@ -412,7 +469,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.2.3（2026-11-05）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.2.5（2026-11-06）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -488,7 +545,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
     <select id="helpF"><option value="">全件</option><option value="1">HELP😢のみ</option></select>
   </div>
   <div class="tbl-wrap">
-    <table class="main">
+    <table class="main rc-tbl">
       <thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>フェーズ</th><th>カテゴリ</th><th>担当</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table>
@@ -1357,18 +1414,20 @@ function render(){
     const kb=getKanryobi(t.no);
     // 全タスクが不要のボックス：状態は「完了」のまま、表示だけ「不要」
     const allFuyo=st==='完了'&&isBoxFuyo(curPid,t.no);
+    const tanto=(['会議','打合せ'].includes(t.category))?'―':((tantoMap[curPid]&&tantoMap[curPid][t.category])||t.tanto||'―');
+    const dueTxt=fmtDue(getEffectiveDue(t.no));
     return '<tr class="'+(st==='完了'?'done-row':'')+'">'
-      +'<td class="no-col">'+t.no+'</td>'
-      +'<td><span class="tlink" onclick="openModal('+t.no+')">'
+      +'<td class="no-col rc-no">'+t.no+'</td>'
+      +'<td class="rc-name"><span class="tlink" onclick="openModal('+t.no+')">'
       +'<span class="tlink-top">'+(hasHelp?'<span class="help-dot"></span>':'')+'<span class="tname-txt">'+t.name+'</span>'+(prog?'<span class="cnt">'+prog.doneN+'/'+prog.activeTotal+'</span>':'')+'</span>'
       +(kb!=='―'?'<span class="kanryobi-txt">✔ '+kb+'</span>':'')
       +'</span></td>'
-      +'<td>'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
-      +'<td>'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
-      +'<td style="font-size:13px;color:var(--color-text-secondary,#666)">'+((['会議','打合せ'].includes(t.category))?'―':((tantoMap[curPid]&&tantoMap[curPid][t.category])||t.tanto||'―'))+'</td>'
-      +'<td style="font-size:13px;white-space:nowrap">'+fmtDue(getEffectiveDue(t.no))+'</td>'
-      +'<td style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
-      +'<td>'+(allFuyo?'<span class="badge sFuyo" title="全タスクが不要（進捗では完了扱い）">不要</span>':'<span class="badge s'+st+'">'+st+'</span>')+'</td></tr>';
+      +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
+      +'<td class="rc-cat">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
+      +'<td class="rc-tanto'+(tanto==='―'?' rc-none':'')+'" style="font-size:13px;color:var(--color-text-secondary,#666)">'+tanto+'</td>'
+      +'<td class="rc-due'+(!dueTxt||dueTxt==='―'?' rc-none':'')+'" style="font-size:13px;white-space:nowrap">'+dueTxt+'</td>'
+      +'<td class="rc-kb" style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
+      +'<td class="rc-st">'+(allFuyo?'<span class="badge sFuyo" title="全タスクが不要（進捗では完了扱い）">不要</span>':'<span class="badge s'+st+'">'+st+'</span>')+'</td></tr>';
   }).join('');
 }
 
@@ -1819,21 +1878,21 @@ function renderMyTasks(targetUser){
       const due = (pStates[p.id]&&pStates[p.id].overrideDue&&pStates[p.id].overrideDue[t.no])
         || t.due || '';
       return '<tr class="'+(st==='完了'?'done-row':'')+'">'
-        +'<td class="no-col">'+t.no+'</td>'
-        +'<td><span class="tlink" onclick="openPropAndModal('+p.id+','+t.no+')">'
+        +'<td class="no-col rc-no">'+t.no+'</td>'
+        +'<td class="rc-name"><span class="tlink" onclick="openPropAndModal('+p.id+','+t.no+')">'
         +'<span class="tname-txt">'+t.name+'</span></span></td>'
-        +'<td>'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
-        +'<td>'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
-        +'<td style="font-size:13px;white-space:nowrap">'+fmtDue(due)+'</td>'
-        +'<td style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
-        +'<td><span class="badge s'+st+'">'+st+'</span></td>'
+        +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
+        +'<td class="rc-cat">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
+        +'<td class="rc-due'+(fmtDue(due)==='―'?' rc-none':'')+'" style="font-size:13px;white-space:nowrap">'+fmtDue(due)+'</td>'
+        +'<td class="rc-kb" style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
+        +'<td class="rc-st"><span class="badge s'+st+'">'+st+'</span></td>'
         +'</tr>';
     }).join('');
 
     return '<div style="margin-bottom:1.5rem">'
       +'<div style="font-size:16px;font-weight:700;padding:.5rem 0;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);margin-bottom:.5rem;cursor:pointer" onclick="openProp('+p.id+')">'
       +'🏠 '+p.name+(p.addr?' <span style=\"font-size:12px;color:var(--color-text-secondary,#666);font-weight:400\">'+p.addr+'</span>':'')+'</div>'
-      +'<div class="tbl-wrap"><table class="main">'
+      +'<div class="tbl-wrap"><table class="main rc-tbl">'
       +'<thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>フェーズ</th><th>カテゴリ</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>'
       +'<tbody>'+rows+'</tbody></table></div></div>';
   }).join('');
@@ -2087,7 +2146,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.2.3';
+const APP_VERSION = '0.2.5';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
@@ -2204,7 +2263,7 @@ function renderTaskEditList(){
   if(cnt) cnt.textContent = '（'+list.length+'/'+TASKS.length+'件）';
 
   body.innerHTML = '<div style="border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:8px;overflow:hidden;max-height:500px;overflow-y:auto">'
-    +'<table style="width:100%;border-collapse:collapse">'
+    +'<table class="te-tbl" style="width:100%;border-collapse:collapse">'
     +'<thead><tr style="background:var(--color-background-secondary,#f5f5f5)">'
     +'<th style="padding:7px 10px;font-size:12px;font-weight:500;color:var(--color-text-secondary,#666);text-align:left;width:40px">No</th>'
     +'<th style="padding:7px 10px;font-size:12px;font-weight:500;color:var(--color-text-secondary,#666);text-align:left">ボックス名</th>'
@@ -2216,14 +2275,14 @@ function renderTaskEditList(){
       const grpCls='g'+(t.group||'').replace(/\s/g,'');
       const catCls='c'+(t.category||'').replace(/\s/g,'');
       return '<tr style="border-top:.5px solid var(--color-border-tertiary,#e5e5e5)">'
-        +'<td style="padding:7px 10px;font-size:12px;color:var(--color-text-tertiary,#999)">'+t.no+'</td>'
-        +'<td style="padding:7px 10px;font-size:13px">'
+        +'<td class="te-no" style="padding:7px 10px;font-size:12px;color:var(--color-text-tertiary,#999)">'+t.no+'</td>'
+        +'<td class="te-name" style="padding:7px 10px;font-size:13px">'
           +t.name
           +(t.items&&t.items.length?'<span style="font-size:11px;color:var(--color-text-tertiary,#999);margin-left:6px">'+t.items.length+'項目</span>':'')
         +'</td>'
-        +'<td style="padding:7px 10px">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
-        +'<td style="padding:7px 10px">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
-        +'<td style="padding:7px 10px;text-align:center;white-space:nowrap">'
+        +'<td class="te-grp" style="padding:7px 10px">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
+        +'<td class="te-cat" style="padding:7px 10px">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
+        +'<td class="te-ops" style="padding:7px 10px;text-align:center;white-space:nowrap">'
           +'<button style="font-size:11px;padding:3px 8px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:5px;background:none;cursor:pointer;margin-right:4px" onclick="openEditTaskDlg('+t.no+')">編集</button>'
           +'<button style="font-size:11px;padding:3px 8px;border:.5px solid #E24B4A;border-radius:5px;background:none;cursor:pointer;color:#E24B4A" onclick="deleteTask('+t.no+')">削除</button>'
         +'</td></tr>';
@@ -2291,7 +2350,7 @@ function renderTempItems(){
   body.innerHTML = tempItems.map((item,i)=>{
     const taskNo = editingTaskNo||0;
     return '<div class="te-item-row" style="flex-direction:column;grid-template-columns:none">'
-      +'<div style="display:grid;grid-template-columns:24px 1fr 80px auto;gap:6px;align-items:center;width:100%">'
+      +'<div class="te-item-grid" style="display:grid;grid-template-columns:24px 1fr 80px auto;gap:6px;align-items:center;width:100%">'
         +'<span class="te-item-no">'+(i+1)+'</span>'
         +'<div style="display:flex;flex-direction:column;gap:3px">'
           +'<input class="te-item-input" type="text" value="'+item.t.replace(/"/g,'&quot;')+'" placeholder="タスクのテキストを入力" oninput="tempItems['+i+'].t=this.value">'
@@ -2301,7 +2360,7 @@ function renderTempItems(){
             ?'<input class="te-why-input" type="text" value="'+(item.why||'').replace(/"/g,'&quot;')+'" placeholder="追加理由（各物件の画面には出ません）" oninput="tempItems['+i+'].why=this.value" style="font-size:12px;padding:4px 8px;border:.5px solid #E8D27A;border-radius:6px;background:#FFFBEA;color:var(--color-text-primary,#1a1a1a)">'
             :(item.why?'<div class="te-why-text" style="font-size:11px;color:#8A6D00">追加理由：'+String(item.why).replace(/</g,'&lt;')+'</div>':''))
         +'</div>'
-        +'<select oninput="tempItems['+i+'].r=this.value" style="font-size:12px;padding:4px 6px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:6px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)">'
+        +'<select class="te-item-role" oninput="tempItems['+i+'].r=this.value" style="font-size:12px;padding:4px 6px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:6px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)">'
           +'<option value="">担当―</option>'
           +CATS_TANTO.map(c=>'<option value="'+c+'"'+(item.r===c?' selected':'')+'>'+c+'</option>').join('')
         +'</select>'
