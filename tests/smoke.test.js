@@ -306,6 +306,17 @@ run('備考：編集済みのボックス一覧にも、空の補足メモだけ
   if(!wv.eval('TASKS.find(t=>t.no===2).items[1].n').includes('WEB予約')) throw new Error('空の補足メモが補われない');
   if(wv.eval('TASKS.find(t=>t.no===4).items[3].n')!=='自分で書いたメモ') throw new Error('書いてあった補足メモを上書きした');
 });
+run('完了したボックスは行全体に横線・グレー（ロードマップ・担当ボックス）', () => {
+  const css = [...d.querySelectorAll('style')].map(x=>x.textContent).join('');
+  if(!/\.done-row td,\.done-row td \*\{[^}]*line-through/.test(css)) throw new Error('行全体の横線のCSSが無い');
+  if(!/\.done-row \.badge\{/.test(css)) throw new Error('バッジのグレー化のCSSが無い');
+  const pid = w.eval('props[0].id');
+  w.openProp(pid);
+  w.eval('pStates['+pid+'].ts[2]="完了"'); w.render();
+  const tr = [...d.querySelectorAll('#tbody tr')].find(r=>r.querySelector('.rc-no')&&r.querySelector('.rc-no').textContent==='2');
+  if(!tr || !tr.classList.contains('done-row')) throw new Error('ロードマップの完了行に done-row が無い');
+  w.eval('pStates['+pid+'].ts[2]="着手前"'); w.render();
+});
 run('埋め込んだドライブのデータを起動時に一度だけ取り込む', () => {
   const seed = {exportedAt:'2026-11-04T00:00:00', boxNoVer:3, props:[{id:1,name:'埋込邸',addr:'',tanto:'',date:'',ki:'',status:''}],
     pStates:{1:{ts:{'1':'完了'},done:{},fuyo:{},help:{},memo:{},overrideDue:{}}}, tantoMap:{}, gateDates:{}, kanryoDates:{}, itemCheckDates:{}};
