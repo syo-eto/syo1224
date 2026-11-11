@@ -8,6 +8,19 @@ S=sys.argv[1]; out=sys.argv[2]; files=sys.argv[3:]
 app=json.load(open(S+'/conv/app.json',encoding='utf8'))
 NOTE_SKIP=re.compile(r'^(←?4/18.*更新|つづきはここから)$')
 def norm(x): return re.sub(r'\s','',str(x or '')).replace('〜','~').replace('～','~').replace('タスク管理表','ボックス管理表')
+def bigram(s):
+    m={}
+    for i in range(len(s)-1): m[s[i:i+2]]=m.get(s[i:i+2],0)+1
+    return m
+def sim(a,b):
+    # 文言の近さ（0〜1）。先頭8文字以上が同じ・一方が他方を含む（4文字以上、長さが4倍以内）・2文字ずつの重なり の順に見る
+    l=0
+    while l<len(a) and l<len(b) and a[l]==b[l]: l+=1
+    if l>=8: return 0.95+0.04*l/max(len(a),len(b))
+    if min(len(a),len(b))>=4 and min(len(a),len(b))/max(len(a),len(b))>=0.25 and (a in b or b in a): return 0.9+0.04*min(len(a),len(b))/max(len(a),len(b))
+    A,B=bigram(a),bigram(b); ta,tb=sum(A.values()),sum(B.values())
+    return 2*sum(min(v,B.get(k,0)) for k,v in A.items())/(ta+tb) if ta+tb else 0
+SIM_MIN=0.6
 def isna(v):
     try: return pd.isna(v)
     except Exception: return False
@@ -69,13 +82,19 @@ for pid,f in enumerate(files,1):
         if v not in staff and v not in res['staffList']: res['staffList'].append(v)
     res['props'].append({'id':pid,'name':name,'addr':addr,'tanto':'','date':chakko or '','ki':ki,'status':''})
     res['tantoMap'][pid]=tanto
-    res['gateDates'][pid]={'着工':chakko} if chakko else {}
+    gates={}
+    for r in range(len(cov)):
+        if cov.shape[1]>8 and not isna(cov.iloc[r,6]):
+            d=ymd(cov.iloc[r,8])
+            if d: gates[str(cov.iloc[r,6]).strip()]=d
+    if chakko: gates['着工']=chakko
+    res['gateDates'][pid]=gates
     ps={'ts':{},'done':{},'fuyo':{},'help':{},'memo':{},'note':{},'overrideDue':{}}
     BH=[re.sub(r'\s','',str(v)) for v in W['ボックス一覧'].iloc[1]]
     CS,CD,CK=BH.index('状態'),BH.index('期日'),BH.index('完了実績')
     CB=BH.index('一括不要') if '一括不要' in BH else None
     b=W['ボックス一覧'].iloc[2:].copy(); b[0]=b[0].ffill()
-    seen=set(); miss=[]; itemsMiss=0; itemsHit=0; nBulk=0; nNotes=0
+    seen=set(); miss=[]; itemsMiss=0; itemsHit=0; nBulk=0; nNotes=0; nSim=0
     nJikko=sum(1 for v in b[3] if norm(v)=='実行予算')
     for _,row in b.iterrows():
         st=row[CS]
@@ -120,8 +139,19 @@ for pid,f in enumerate(files,1):
                         h=truthy(sh.iloc[r,ch]) if ch is not None else False,d=ymd(sh.iloc[r,cd]) if cd is not None else None,
                         m=str(sh.iloc[r,cm]) if cm is not None and not isna(sh.iloc[r,cm]) else '',
                         n=re.sub(r'\s*\n\s*',' ',str(sh.iloc[r,cn])).strip() if cn is not None and not isna(sh.iloc[r,cn]) else '',u=False))
+                pairs={}
                 for idx,it in enumerate(t['items']):
                     m=next((r for r in rows if not r['u'] and r['t']==norm(it)),None)
+                    if m: m['u']=True; pairs[idx]=m
+                # 文言が合わないもの：テンプレートで文言が変わったタスクとみて、似ているもの同士を当てる（その物件で足したタスクは当たらない）
+                cand=[(sim(r['t'],norm(it)),idx,ri) for idx,it in enumerate(t['items']) if idx not in pairs for ri,r in enumerate(rows) if not r['u']]
+                for sc,idx,ri in sorted(cand,reverse=True):
+                    if sc<SIM_MIN: break
+                    if idx in pairs or rows[ri]['u']: continue
+                    rows[ri]['u']=True; pairs[idx]=rows[ri]; nSim+=1
+                for r in rows: r['u']=False
+                for idx,it in enumerate(t['items']):
+                    m=pairs.get(idx)
                     if not m: continue
                     m['u']=True; itemsHit+=1
                     fuyo[idx]=m['f']; done[idx]=m['c'] and not m['f']; hlp[idx]=m['h']; memo[idx]=m['m']
@@ -143,9 +173,14 @@ for pid,f in enumerate(files,1):
     for t in absent:
         n=len(t['items']); ps['ts'][t['no']]='完了'
         ps['done'][t['no']]=[False]*n; ps['fuyo'][t['no']]=[True]*n; ps['help'][t['no']]=[False]*n; ps['memo'][t['no']]=['']*n; ps['note'][t['no']]=['']*n
+    # 表に無いボックス（テンプレートで増えたものなど）は、表紙のゲートの日付から期日を出す（期日 ＝ 対象ゲート − 所要日程）
+    nDue=0
+    for t in app['tasks']:
+        if t['no'] in seen or t['no'] in ps['overrideDue'] or not t.get('gate') or t['gate'] not in gates or t.get('days') is None: continue
+        ps['overrideDue'][t['no']]=(dt.date.fromisoformat(gates[t['gate']])-dt.timedelta(days=t['days'])).isoformat(); nDue+=1
     res['pStates'][pid]=ps
     cnt={s:list(ps['ts'].values()).count(s) for s in ('完了','進行中','着手前')}
-    report.append(dict(name=name,addr=addr,ki=ki,chakko=chakko,boxes=len(seen),missingBoxes=miss,state=cnt,itemsMatched=itemsHit,checkedRowsNotMatched=itemsMiss,tanto=tanto,appBoxesNotInSheet=[t['no'] for t in app['tasks'] if t['no'] not in seen],markedFuyo=report_absent,bulkFuyo=nBulk,propNotes=nNotes))
+    report.append(dict(name=name,addr=addr,ki=ki,chakko=chakko,boxes=len(seen),missingBoxes=miss,state=cnt,itemsMatched=itemsHit,checkedRowsNotMatched=itemsMiss,tanto=tanto,appBoxesNotInSheet=[t['no'] for t in app['tasks'] if t['no'] not in seen],markedFuyo=report_absent,bulkFuyo=nBulk,propNotes=nNotes,itemsBySimilarity=nSim,gates=gates,duesFromGates=nDue))
 res['removeStaff']=sorted(GAICHU|TOKUREI)
 if GAICHU and '外注' not in res['staffList']: res['staffList'].append('外注')  # 保存済みのスタッフ一覧に外注が無い人向け
 json.dump(res,open(out,'w',encoding='utf8'),ensure_ascii=False)
