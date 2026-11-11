@@ -39,9 +39,10 @@ def staffname(n):
     return c[0] if len(c)==1 else n
 APP={}
 for t in app['tasks']: APP.setdefault(norm(t['name']),[]).append(t)
+RENAMED={'発注':'発注①','竣工書類':'引渡後業務'}
 STAT={'完了':'完了','作業中':'進行中','進行中':'進行中','着手前':'着手前'}
 CATS=['企画','企画補助','建築家','設計チェック','構造','設計作図','IC','申請','基礎監督','現場監督','工務補助','監査','技術']
-res={'version':'7','boxNoVer':5,'exportedAt':dt.datetime.now().isoformat(),'props':[],'pStates':{},'tantoMap':{},'gateDates':{},'kanryoDates':{},'itemCheckDates':{},'staffList':[]}
+res={'version':'7','boxNoVer':6,'exportedAt':dt.datetime.now().isoformat(),'props':[],'pStates':{},'tantoMap':{},'gateDates':{},'kanryoDates':{},'itemCheckDates':{},'staffList':[]}
 import os
 dash=pd.read_excel(os.path.join(os.path.dirname(os.path.abspath(files[0])),'dashboard.xlsx'),sheet_name='新築・フルリノベ',header=None)
 A=[str(v).strip() if not isna(v) else '' for v in dash[0]]
@@ -85,6 +86,8 @@ for pid,f in enumerate(files,1):
         # 1行だけの古い形式は、中身が同じアプリの116「実行予算」に当てる
         if norm(nm)=='実行予算' and nJikko>=2 and 38 not in seen: nm='原価管理'
         cand=APP.get(norm(nm))
+        # テンプレートで名前が変わったボックス（2026-11-10 夜）。古い表は旧名のまま
+        if not cand and norm(nm) in RENAMED: cand=APP.get(norm(RENAMED[norm(nm)]))
         if not cand: miss.append(norm(nm)); continue
         t=next((c for c in cand if c['no'] not in seen and str(row[0]).strip()==c.get('group')),None) or next((c for c in cand if c['no'] not in seen),cand[0])
         no=t['no']
