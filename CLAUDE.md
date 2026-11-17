@@ -7,7 +7,7 @@
 ## 進め方
 
 - **2026-11-11 時点の最新は `claude/serene-franklin-ercic8`（v0.3.2）。** `claude/elegant-sagan-euypxk`（v0.3.1）・`claude/bold-noether-5fbq8t`（v0.2.5）はその前の版で、ここに取り込み済み。基準のブランチ（`claude/awesome-pascal-qd2cyd`、v0.2.3）への取り込み（プルリクエスト #2 は 0.2.5 のまま）は、利用者の GitHub アカウントが凍結中（復帰を申し立て中）のため未マージ。マージできるまでは、新しいセッションは最新の作業ブランチにそろえてから始める（下の手順で日時と `APP_VERSION` が一番新しいもの）。マージできるようになったら、最新の作業ブランチから基準のブランチへのプルリクエストを作り直す（#2 は古い）。
-- **2026-11-17**：最新は `claude/stoic-clarke-0i5ntd`（v0.3.3、担当ボックスの画面を物件ごとのカードに）。下の11/11の判断待ちは、まだ利用者の回答なし。
+- **2026-11-17**：最新は `claude/stoic-clarke-0i5ntd`（v0.4.0）。0.3.3で担当ボックスを物件ごとのカードにし、0.4.0でホーム画面（タブで全体ダッシュボード＝物件一覧／個人ダッシュボード＝担当ボックス）にした。下の11/11の判断待ちは、まだ利用者の回答なし。
 - **次のセッションへ（2026-11-11 終了時）**：最新は `claude/serene-franklin-ercic8`（v0.3.2）。まだマージできない（利用者の GitHub アカウントは凍結中）ので、このブランチにそろえてから始める。利用者の判断待ちは、下の(2)の「期日超過の数え方をアプリとダッシュボードのどちらに合わせるか」と「シートの式の誤り（表紙 E19・E20、期日が空の扱い、杉田・藤澤様邸の期日の1行ずれ）を持ち主に伝えるか」。配布用ファイルの最新は `housing_roadmap_v7_20261111.html`（4物件をテンプレートに合わせて取り込んだ差し替え版）。
 - **引き継ぎ（2026-11-11）**：(1) テンプレートの備考のうち職種名だけのもの（No55「企画」「申請」「工務」、No69「設計作図担当」「IC」「設計監理」、No82・84・173 など）は、補足メモのまま残す（2026-11-11 利用者の指示。担当職種へ移したり外したりしない）。未着手は次のとおり。(2) ダッシュボードの「期日超過ボックス数」のずれは 2026-11-11 に調査済み。ダッシュボードは各物件の表紙 E6:E19（担当業務ごとに、ボックス一覧の「超過」を SUMIF）の合計。シート側の違い：①会議・打合せを数えない（ダッシュボードが E20 打合せを範囲外にし、さらに表紙の E19・E20 の式がテンプレートでも「超過」ではなく HELP 列（平川様邸は一括不要列）を合計している）、②期日が空のボックスを超過に数える（`IFS(I>TODAY(),0,…,進捗<1,1)` で空欄が超過になる）、③期日当日を超過に数える（アプリは翌日から）、④古い形式（松下様邸）の「超過」は一括不要を除かない、⑤アプリに無いボックス（松下様邸の工事予算）。11/11 時点：松下 23↔アプリ20、平川 31↔32、杉田 6↔11、藤澤 6↔6（中身は違う）。別件で、杉田・藤澤様邸の表はボックス一覧I列（期日）の式が1行ずれている（n行目が M(n+1)・L(n+1) を参照し、次のボックスの期日が入る。杉田様邸で約90ボックス）。テンプレートはずれていない。アプリはシートの期日をそのまま取り込むので、同じずれが入る。アプリ側を合わせるか（会議・打合せを数えない等）、シートの持ち主に伝えるかは利用者の判断待ち。テンプレートの 11/10 12:25(UTC) の更新は 0.3.2 で反映済み。(3) 野内さんの使用感（キックオフ前に開始予定の入力を周知）は社内の周知で、アプリの作業なし。配布用ファイルの最新は `housing_roadmap_v7_20261111.html`（v0.3.2、11/11 に送付）。
 
@@ -24,12 +24,13 @@
 | 領域 | 場所 |
 | --- | --- |
 | データ定数 | 644〜690行付近：`TASKS` `PROP_STATUSES` `TASK_GATE_MAP` `GROUPS` `PCOLS` `PREP_ROWS` `CATS_TANTO` `props` `pStates` `staffList` `tantoMap` `kanryoDates` `itemCheckDates` `taskLinks` |
+| ホーム | `#page-list` の中に、タブ `switchHomeTab`（`homeTab` = all／me）で `#homePanel-all`（全体ダッシュボード＝物件一覧）と `#homePanel-me`（個人ダッシュボード）。`goToList` `goBack` `goToMyTasks` はどれもホームを出してタブを切り替える |
 | 物件一覧 | `renderPropList` `sortedProps` `renderStatusFilters` |
 | ステータス判定 | `phasePct` `calcPropStatus` `getPropStatus` `overallPct` |
 | ロードマップ | `openProp` `render` |
 | チェック画面 | `openModal` `renderModalBody` `calcProg` `checkAutoComplete` `bulkFuyo` `renderTaskLinks` |
 | ゲート・期日 | `GATES`（956行付近）`openGateDlg` `saveGate` `calcDues` `legacyDues` `recalcAllDues` `migrateDues` `getEffectiveDue` |
-| 担当者 | `openTantoDlg` `saveTanto` `goToMyTasks` `renderMyTasks`（物件ごとのカード `.mt-prop`、畳む `toggleMyTaskProp`、移動 `jumpMyTaskProp`） |
+| 担当者 | `openTantoDlg` `saveTanto` `goToMyTasks` `renderMyTaskPanel` `renderMyTasks`（物件ごとのカード `.mt-prop`、畳む `toggleMyTaskProp`、移動 `jumpMyTaskProp`） |
 | 管理者設定 | `goToAdmin` `switchAdminTab` `renderPropAdminList` `deleteProp` `renderTaskEditList` `saveTaskEdit` `openLinkAdd` `renderBoxHistory` |
 | 保存 | `saveData` `loadData` `scheduleSave` `exportAllData` `importAllData` |
 
@@ -53,7 +54,7 @@
 
 - ボックス管理の更新履歴：`TEMPLATE_HISTORY`（アプリに組み込んだテンプレートの更新。テンプレートを変えて配布するたびに1行追記する）と `boxHistory`（この端末でボックス管理から行った追加・編集・削除。`{at,type,no,name,detail}`、最大300件、保存・エクスポート・インポートの対象）。ボックス管理タブの「📝 更新履歴」に新しい順で出す。編集の内容は `describeBoxChange` が作る。
 
-- 使う人の選択（ログインの代わり、パスワードなし）：起動のたびに `openUserPick` で選ぶ（スタッフ一覧から「外注」を除く）。`curUser`。前回の人は `localStorage` の `housing_roadmap_v7_user`（端末ごと）に覚えて一番上に出す。物件一覧の見出し横に名前と「切替」。担当ボックスは選んだ人で開き、ボックス管理の更新履歴に `by` として残す。本格的な認証は年明けの共有化で行う。
+- 使う人の選択（ログインの代わり、パスワードなし）：起動のたびに `openUserPick` で選ぶ（スタッフ一覧から「外注」を除く）。`curUser`。前回の人は `localStorage` の `housing_roadmap_v7_user`（端末ごと）に覚えて一番上に出す。ホームの見出し横に名前と「切替」。個人ダッシュボードは選んだ人で開き、ボックス管理の更新履歴に `by` として残す。本格的な認証は年明けの共有化で行う。
 
 ## 守るべき仕様
 
@@ -73,13 +74,13 @@
 
 - `let` で宣言した変数（`props` `pStates` など）は `window` に載らない。テストでは `w.eval('props')` で読む。
 - `toggleDone` `toggleFuyo` `saveHelp` `saveTanto` `saveGate` `addProperty` `cycleState` `bulkFuyo` は、末尾で関数を包んで `scheduleSave()` を呼んでいる。ほかに保存が必要な処理は、自分で `scheduleSave()` を呼ぶ。
-- 起動の順序は `loadData()` → `renderPropList()`。保存先のキーは `localStorage` の `housing_roadmap_v7`。
+- 起動の順序は `loadData()` → `renderPropList()` → `switchHomeTab(homeTab)` → `openUserPick()`。担当ボックスの別画面（`page-mytasks`）は 0.4.0 で無くした。保存先のキーは `localStorage` の `housing_roadmap_v7`。
 - `TASKS` は、ボックス管理で編集したとき（`tasksEdited` が true）だけ保存キーの `tasks` に保存し、`loadData` で `pStates` より先に戻す。未編集の利用者にはHTML内のテンプレートがそのまま使われる。一度編集した利用者には、HTML側の `TASKS` を更新しても届かない。
 - ボックス番号は `TASKS` のほか `TASK_GATE_MAP` `GATES` と、保存データ（`pStates` の各キー、`kanryoDates` `itemCheckDates` `taskLinks`）でも使う。番号を付け替えるときは全部を揃え、`migrateBoxNos` のように旧データを移す処理を足して `BOX_NO_VER` を上げる。テンプレートの更新でボックスの途中にタスクが増えたときも同じ（チェック・チェック日・添付が位置で紐づくため）。例：`migrateToV4`（`BOX_NO_VER` 4、2026-11-09 のテンプレート。`TEMPLATE_V4` に旧位置→新位置を持つ）、`migrateToV6`（`BOX_NO_VER` 6、2026-11-10 夜のテンプレート。`TEMPLATE_V6` は旧番号ごとに、更新前の文言の印 `h`（`v6Hash`）と旧位置→[新番号,新位置] を持ち、ボックスをまたぐ移動も表せる。編集済みの一覧は印が合うボックスだけ新しくする）。
 - 0.3.2 からボックス番号は連番でない：86「図面職人公開」は欠番（テンプレートで削除）、183「発注②」・184「発注③」はテンプレートの並びで149「土台敷～上棟まで」の後に置いた。番号を付け直すと保存データ・CLAUDE.md・開発記録の番号がすべてずれるため、付け直さない（今後もボックスが増えたら末尾の番号を使い、`TASKS` の中ではテンプレートの位置に置く）。ロードマップ・ボックス管理の並びは番号順ではなく `TASKS` の順（`TASKS.indexOf`）。テンプレートの番号（ROW()-2）とは対応しない。`tools/drive_to_import.py` の `boxNoVer` も合わせて上げる（取り込みデータが二重に移されないように）。
 - ブラウザのアドレスバーでは `javascript:` が実行できない。保存データを消すときは、開発者ツールのConsoleで実行するか、起動時に一時的な `removeItem` を入れる（戻し忘れに注意）。
 - 全角の括弧や空白が混ざると構文エラーになる。生成したコードは必ず `npm run check` にかける。
-- アプリの版は `APP_VERSION`（0.1.0 から）。変えたら物件一覧の見出し横の `#appVersion`、`package.json`、`CHANGELOG.md` を揃える。修正・見た目は PATCH、機能の追加は MINOR を上げる。エクスポートにも `appVersion` を入れる。
+- アプリの版は `APP_VERSION`（0.1.0 から）。変えたらホームの見出し横の `#appVersion`、`package.json`、`CHANGELOG.md` を揃える。修正・見た目は PATCH、機能の追加は MINOR を上げる。エクスポートにも `appVersion` を入れる。
 - 2つ目の `<script>` は PWA の manifest。http(s) で配信したときだけ働く。
 
 ## Excel テンプレートの取り込み

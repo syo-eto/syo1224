@@ -18,8 +18,8 @@ const active = () => [...d.querySelectorAll('.page.active')].map(x=>x.id).join('
 run('起動時: 物件一覧が表示される', () => { if(active()!=='page-list') throw new Error('active='+active()); });
 run('ログイン画面の要素が無い', () => { if(d.getElementById('page-login')||d.getElementById('loginIdInput')) throw new Error('残存'); });
 run('ヘッダーのボタン', () => {
-  const t = d.querySelector('#page-list .list-hdr').textContent;
-  ['管理者設定','担当ボックス','スタッフ管理','物件追加'].forEach(k=>{ if(!t.includes(k)) throw new Error(k+'が無い'); });
+  const t = d.querySelector('#page-list .list-hdr').textContent + d.querySelector('#page-list .home-tabs').textContent;
+  ['管理者設定','全体ダッシュボード','個人ダッシュボード','スタッフ管理','物件追加'].forEach(k=>{ if(!t.includes(k)) throw new Error(k+'が無い'); });
   ['ログアウト','個人設定'].forEach(k=>{ if(t.includes(k)) throw new Error(k+'が残っている'); });
 });
 run('物件追加→担当者設定ウィザード', () => {
@@ -69,7 +69,19 @@ run('一括不要：状態は完了のまま、表には「不要」と出る', 
   if(row2.querySelector('.sFuyo')) throw new Error('解除後も不要の表示');
 });
 run('一覧へ戻る', () => { w.goBack(); });
-run('担当ボックス画面', () => { w.goToMyTasks(); if(active()!=='page-mytasks') throw new Error(active()); });
+run('ホーム：全体・個人ダッシュボードのタブ切替', () => {
+  w.goToMyTasks();
+  if(active()!=='page-list') throw new Error(active());
+  if(!d.getElementById('homePanel-me').classList.contains('on')||d.getElementById('homePanel-all').classList.contains('on')) throw new Error('個人のタブが開かない');
+  if(!d.getElementById('homeTab-me').classList.contains('on')) throw new Error('タブの印');
+  // ロードマップから戻ると同じタブ
+  const pid=w.eval('props[0].id'); w.openProp(pid); w.goBack();
+  if(!d.getElementById('homePanel-me').classList.contains('on')) throw new Error('戻ると個人のタブでない');
+  w.switchHomeTab('all');
+  if(!d.getElementById('homePanel-all').classList.contains('on')) throw new Error('全体のタブが開かない');
+  if(w.localStorage.getItem('housing_roadmap_v7_home')!=='all') throw new Error('タブを覚えない');
+  w.goToMyTasks();
+});
 run('スマートフォン用：管理者設定のボックス一覧に列の印（カード表示用）', () => {
   w.goToAdmin(); w.switchAdminTab('task');
   const row = d.querySelector('#taskEditList table.te-tbl tbody tr');

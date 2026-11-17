@@ -267,6 +267,14 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 .form-row{margin-bottom:.8rem}
 .form-row label{display:block;font-size:12px;color:var(--color-text-secondary,#666);margin-bottom:4px;font-weight:500}
 .form-row input{width:100%;font-size:14px;padding:7px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:8px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)}
+/* ホームのタブ */
+.home-tabs{display:flex;gap:4px;border-bottom:1px solid var(--color-border-secondary,#d0d0d0);margin:0 0 .9rem}
+.home-tab{font-size:14px;padding:8px 16px;border:1px solid transparent;border-bottom:none;border-radius:9px 9px 0 0;background:transparent;color:var(--color-text-secondary,#666);cursor:pointer;margin-bottom:-1px;font-weight:500}
+.home-tab:hover{background:var(--color-background-secondary,#f7f7f5)}
+.home-tab.on{background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);border-color:var(--color-border-secondary,#d0d0d0);font-weight:700}
+.home-panel{display:none}.home-panel.on{display:block}
+.mt-hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.25rem}
+.mt-title{flex:1;font-size:17px;font-weight:700}
 /* 担当ボックス：物件ごとのカード */
 .mt-summary{display:flex;gap:8px;flex-wrap:wrap;margin:.25rem 0 .75rem}
 .mt-sum-item{flex:1 1 90px;max-width:160px;border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:10px;padding:8px 12px;background:var(--color-background-primary,#fff)}
@@ -354,8 +362,8 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   .te-item-grid .te-item-del{grid-column:3;grid-row:1}
   .te-item-grid .te-item-role{grid-column:2;grid-row:2;justify-self:start}
   /* 担当ボックス：見出しの表示中を2行目に */
-  #page-mytasks .rm-hdr-row{flex-wrap:wrap}
-  #page-mytasks .rm-title{font-size:17px}
+  .home-tab{flex:1;font-size:13px;padding:8px 6px}
+  .mt-title{font-size:16px;flex-basis:100%}
   #myTaskStaffWrap{flex-basis:100%}
   #myTaskStaffSel{flex:1}
   .mt-sum-item{flex:1 1 calc(50% - 8px);max-width:none;padding:6px 10px}
@@ -402,30 +410,11 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 </head>
 <body>
 
-<!-- 担当ボックス一覧 -->
-<div class="page" id="page-mytasks">
-  <div class="rm-hdr">
-    <div class="rm-hdr-row">
-      <button class="rm-back" onclick="goToList()">← 物件一覧</button>
-      <div style="flex:1"><div class="rm-title" id="myTaskTitle"></div></div>
-      <div id="myTaskStaffWrap" style="display:none;align-items:center;gap:6px">
-        <span style="font-size:12px;color:var(--color-text-secondary,#666)">表示中：</span>
-        <select id="myTaskStaffSel" style="font-size:13px;padding:4px 8px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:7px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)" onchange="onMyTaskStaffChange()"></select>
-      </div>
-    </div>
-  </div>
-  <div style="padding:.5rem 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-    <span style="font-size:12px;color:var(--color-text-secondary,#666)">状態：</span>
-    <div id="myTaskStateFilters" style="display:flex;gap:4px;flex-wrap:wrap"></div>
-  </div>
-  <div id="myTaskBody"></div>
-</div>
-
 <!-- 管理者ページ -->
 <div class="page" id="page-admin">
   <div class="rm-hdr">
     <div class="rm-hdr-row">
-      <button class="rm-back" onclick="goToList()">← 物件一覧</button>
+      <button class="rm-back" onclick="goToList()">← ホーム</button>
       <div style="flex:1"><div class="rm-title">⚙ 管理者設定</div></div>
     </div>
   </div>
@@ -507,7 +496,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 <div id="userPick" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(20,24,30,.55);align-items:center;justify-content:center;padding:16px">
   <div style="background:var(--color-background-primary,#fff);border-radius:14px;padding:1.4rem 1.5rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.25)">
     <div style="font-size:18px;font-weight:700;margin-bottom:.3rem">👤 だれが使いますか？</div>
-    <div style="font-size:12px;color:var(--color-text-secondary,#666);margin-bottom:1rem">名前を選ぶと始まります（パスワードはありません）。担当ボックスや更新履歴に使います。</div>
+    <div style="font-size:12px;color:var(--color-text-secondary,#666);margin-bottom:1rem">名前を選ぶと始まります（パスワードはありません）。個人ダッシュボードや更新履歴に使います。</div>
     <div id="userPickLast"></div>
     <div id="userPickList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
   </div>
@@ -516,18 +505,21 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div id="seedNotice" style="display:none;margin:0 0 .75rem;padding:.6rem .9rem;border-radius:8px;background:#EAF3DE;color:#3B6D11;font-size:13px"></div>
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
-      <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.3.3（2026-11-17）</span>
+      <div class="list-title">🏠 ホーム</div>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.4.0（2026-11-17）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
       <button class="admin-btn" onclick="goToAdmin()">⚙ 管理者設定</button>
-      <button class="add-btn" style="background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);border:.5px solid var(--color-border-secondary,#d0d0d0)" onclick="goToMyTasks()">📋 担当ボックス</button>
-
       <button class="add-btn" onclick="openAddDlg()">＋ 物件追加</button>
       <button class="add-btn" style="background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);border:.5px solid var(--color-border-secondary,#d0d0d0)" onclick="openStaffDlg()">👤 スタッフ管理</button>
     </div>
   </div>
+  <div class="home-tabs" role="tablist">
+    <button class="home-tab on" id="homeTab-all" role="tab" onclick="switchHomeTab('all')">📊 全体ダッシュボード</button>
+    <button class="home-tab" id="homeTab-me" role="tab" onclick="switchHomeTab('me')">📋 個人ダッシュボード</button>
+  </div>
+  <div class="home-panel on" id="homePanel-all">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:.6rem;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:6px">
       <span style="font-size:12px;color:var(--color-text-secondary,#666)">並び替え：</span>
@@ -565,13 +557,28 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
     </table>
   </div>
   <div class="prop-cards" id="propCards"></div>
+  </div>
+  <div class="home-panel" id="homePanel-me">
+    <div class="mt-hdr">
+      <div class="mt-title" id="myTaskTitle"></div>
+      <div id="myTaskStaffWrap" style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:12px;color:var(--color-text-secondary,#666)">表示中：</span>
+        <select id="myTaskStaffSel" style="font-size:13px;padding:4px 8px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:7px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)" onchange="onMyTaskStaffChange()"></select>
+      </div>
+    </div>
+    <div style="padding:.25rem 0 .5rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--color-text-secondary,#666)">状態：</span>
+      <div id="myTaskStateFilters" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    </div>
+    <div id="myTaskBody"></div>
+  </div>
 </div>
 
 <!-- ロードマップ -->
 <div class="page" id="page-rm">
   <div class="rm-hdr">
     <div class="rm-hdr-row">
-      <button class="rm-back" onclick="goBack()">← 物件一覧</button>
+      <button class="rm-back" onclick="goBack()">← ホーム</button>
       <div style="flex:1;min-width:0">
         <div class="rm-title" id="rmTitle"></div>
 
@@ -1176,9 +1183,8 @@ function openPropPhase(pid,pIdx){
   openProp(pid,GROUPS.includes(grp)?grp:'すべて');
 }
 function goBack(){
-  document.getElementById('page-rm').classList.remove('active');
-  document.getElementById('page-list').classList.add('active');
-  renderPropList();
+  showHome();
+  switchHomeTab(homeTab);
 }
 function updateRmSub(){
   const el=document.getElementById('rmSub');
@@ -1880,17 +1886,33 @@ function setCurUser(name){
   document.getElementById('userPick').style.display='none';
   document.getElementById('curUserLabel').textContent=name;
   document.getElementById('curUserWrap').style.display='inline-flex';
+  if(homeTab==='me' && document.getElementById('page-list').classList.contains('active')) renderMyTaskPanel();
+}
+// ===== ホーム：全体ダッシュボード（物件一覧）と個人ダッシュボードのタブ =====
+const HOME_TAB_KEY = 'housing_roadmap_v7_home'; // 端末ごとに前回のタブを覚える
+let homeTab = 'all';
+try{ if(localStorage.getItem(HOME_TAB_KEY)==='me') homeTab='me'; }catch(e){}
+function showHome(){
+  ['page-rm','page-admin'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById('page-list').classList.add('active');
+}
+function switchHomeTab(tab){
+  homeTab = tab==='me' ? 'me' : 'all';
+  try{ localStorage.setItem(HOME_TAB_KEY, homeTab); }catch(e){}
+  ['all','me'].forEach(k=>{
+    document.getElementById('homeTab-'+k).classList.toggle('on', k===homeTab);
+    document.getElementById('homePanel-'+k).classList.toggle('on', k===homeTab);
+  });
+  if(homeTab==='me') renderMyTaskPanel(); else renderPropList();
 }
 function goToMyTasks(){
-  document.getElementById('page-list').classList.remove('active');
-  document.getElementById('page-rm').classList.remove('active');
-  document.getElementById('page-admin').classList.remove('active');
-  document.getElementById('page-mytasks').classList.add('active');
+  showHome();
+  switchHomeTab('me');
+}
+function renderMyTaskPanel(){
   // スタッフ選択（全員が切り替え可能）
-  const wrap=document.getElementById('myTaskStaffWrap');
   const sel=document.getElementById('myTaskStaffSel');
   if(!staffList.includes(myTaskUser)) myTaskUser=staffList[0]||'';
-  if(wrap) wrap.style.display='flex';
   if(sel){
     sel.innerHTML=staffList.map(s=>'<option value="'+s+'">'+s+'</option>').join('');
     sel.value=myTaskUser;
@@ -1951,7 +1973,7 @@ function jumpMyTaskProp(pid){
 function renderMyTasks(targetUser){
   const user = targetUser||myTaskUser;
   myTaskUser = user; // 畳む・移動のときに同じ人で描き直す
-  document.getElementById('myTaskTitle').textContent = '📋 '+user+' の担当ボックス';
+  document.getElementById('myTaskTitle').textContent = '👤 '+user+' の担当ボックス';
   renderMyTaskStateFilters(user);
   const body = document.getElementById('myTaskBody');
   // 物件ごとに、user が担当のボックスを集める（tantoMap の職種の担当、なければボックスの担当）
@@ -2065,7 +2087,6 @@ function renderMyTasks(targetUser){
 function openPropAndModal(pid, taskNo){
   // 物件ロードマップを開いてからモーダルを表示
   openProp(pid);
-  document.getElementById('page-mytasks').classList.remove('active');
   setTimeout(()=>openModal(taskNo), 100);
 }
 
@@ -2243,16 +2264,13 @@ function importAllData(input){
 function goToAdmin(){
   document.getElementById('page-list').classList.remove('active');
   document.getElementById('page-rm').classList.remove('active');
-  document.getElementById('page-mytasks').classList.remove('active');
   document.getElementById('page-admin').classList.add('active');
   switchAdminTab('prop');
 }
 
 function goToList(){
-  document.getElementById('page-admin').classList.remove('active');
-  document.getElementById('page-mytasks').classList.remove('active');
-  document.getElementById('page-list').classList.add('active');
-  renderPropList();
+  showHome();
+  switchHomeTab(homeTab);
 }
 
 function switchAdminTab(tab){
@@ -2311,7 +2329,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.3.3';
+const APP_VERSION = '0.4.0';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
@@ -2934,6 +2952,7 @@ loadData();
 applyDriveSeed();
 
 renderPropList();
+switchHomeTab(homeTab);
 openUserPick();
 </script>
 
