@@ -267,6 +267,39 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 .form-row{margin-bottom:.8rem}
 .form-row label{display:block;font-size:12px;color:var(--color-text-secondary,#666);margin-bottom:4px;font-weight:500}
 .form-row input{width:100%;font-size:14px;padding:7px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:8px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)}
+/* 担当ボックス：物件ごとのカード */
+.mt-summary{display:flex;gap:8px;flex-wrap:wrap;margin:.25rem 0 .75rem}
+.mt-sum-item{flex:1 1 90px;max-width:160px;border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:10px;padding:8px 12px;background:var(--color-background-primary,#fff)}
+.mt-sum-label{font-size:11px;color:var(--color-text-secondary,#666)}
+.mt-sum-val{font-size:22px;font-weight:700;line-height:1.2}
+.mt-sum-over{border-color:#F0B5B5;background:#FDF0F0}.mt-sum-over .mt-sum-val{color:#C0392B}
+.mt-sum-soon{border-color:#F2D29B;background:#FFF8EC}.mt-sum-soon .mt-sum-val{color:#B26A00}
+.mt-index{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.mt-chip{font-size:12px;padding:4px 10px;border-radius:20px;border:.5px solid var(--color-border-secondary,#d0d0d0);background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.mt-chip-over{font-size:10px;padding:1px 6px;border-radius:10px;background:#FDE2E2;color:#C0392B;font-weight:700}
+.mt-chip-soon{font-size:10px;padding:1px 6px;border-radius:10px;background:#FFF0D6;color:#B26A00;font-weight:700}
+.mt-prop{border:.5px solid var(--color-border-secondary,#d0d0d0);border-left:5px solid #7A9CC6;border-radius:12px;margin-bottom:1.25rem;background:var(--color-background-primary,#fff);overflow:hidden;scroll-margin-top:8px}
+.mt-prop-over{border-left-color:#D9534F}
+.mt-prop-hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--color-background-secondary,#f7f7f5);cursor:pointer}
+.mt-closed .mt-prop-hdr{background:var(--color-background-primary,#fff)}
+.mt-caret{font-size:11px;color:var(--color-text-secondary,#666);width:12px}
+.mt-prop-main{flex:1 1 220px;min-width:0}
+.mt-prop-name{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mt-prop-addr{font-size:12px;color:var(--color-text-secondary,#666);margin-top:2px}
+.mt-prop-stats{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mt-prog{min-width:110px}
+.mt-prog-txt{font-size:12px;color:var(--color-text-secondary,#666)}
+.mt-prog-txt b{color:var(--color-text-primary,#1a1a1a);font-size:14px}
+.mt-bar{height:6px;border-radius:3px;background:#E3E3E0;margin-top:3px;overflow:hidden}
+.mt-bar-in{height:100%;background:#5B9A3C}
+.mt-tag{font-size:12px;padding:3px 9px;border-radius:20px;background:#EFEFEC;color:var(--color-text-secondary,#666);white-space:nowrap}
+.mt-tag-over{background:#FDE2E2;color:#C0392B;font-weight:700}
+.mt-tag-soon{background:#FFF0D6;color:#B26A00;font-weight:700}
+.mt-tag-done{background:#EAF3DE;color:#3B6D11}
+.mt-open{font-size:12px;padding:5px 12px;border-radius:7px;border:.5px solid var(--color-border-secondary,#d0d0d0);background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);cursor:pointer;white-space:nowrap}
+.mt-prop-body{padding:10px 12px 12px}
+.mt-none{font-size:13px;color:var(--color-text-tertiary,#999);padding:.5rem .25rem}
+.mt-row-over td{background:#FDF3F3}
 /* ===== 画面幅ごとの表示（スマートフォン：〜600px／タブレット：601〜1024px／PC：1025px〜） ===== */
 .prop-cards{display:none}
 @media (max-width:600px){
@@ -325,6 +358,13 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   #page-mytasks .rm-title{font-size:17px}
   #myTaskStaffWrap{flex-basis:100%}
   #myTaskStaffSel{flex:1}
+  .mt-sum-item{flex:1 1 calc(50% - 8px);max-width:none;padding:6px 10px}
+  .mt-sum-val{font-size:18px}
+  .mt-prop-hdr{padding:10px}
+  .mt-prop-name{font-size:16px}
+  .mt-prop-stats{flex-basis:100%;padding-left:22px}
+  .mt-open{margin-left:auto}
+  .mt-prop-body{padding:6px}
   /* チェック画面：タスクの文を少し小さく、チェック欄を少し細く */
   .cl-header,.cl-item{grid-template-columns:1fr 44px 44px 44px 16px;gap:3px}
   .cl-text{font-size:13px;line-height:1.45}
@@ -477,7 +517,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 物件管理</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.3.2（2026-11-11）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.3.3（2026-11-17）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1888,69 +1928,138 @@ function toggleMyTaskState(s, user){
   renderMyTasks(user);
 }
 
+let myTaskCollapsed = new Set(); // 畳んだ物件（pid）
+
+function myTaskDue(pid, t){
+  return (pStates[pid]&&pStates[pid].overrideDue&&pStates[pid].overrideDue[t.no]) || t.due || '';
+}
+function myTaskDiff(due){
+  if(!due) return null;
+  const d=new Date(due); d.setHours(0,0,0,0);
+  return Math.round((d-today)/864e5);
+}
+function toggleMyTaskProp(pid){
+  if(myTaskCollapsed.has(pid)) myTaskCollapsed.delete(pid); else myTaskCollapsed.add(pid);
+  renderMyTasks(myTaskUser);
+}
+function jumpMyTaskProp(pid){
+  if(myTaskCollapsed.has(pid)){ myTaskCollapsed.delete(pid); renderMyTasks(myTaskUser); }
+  const el=document.getElementById('mtProp_'+pid);
+  if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 function renderMyTasks(targetUser){
   const user = targetUser||myTaskUser;
+  myTaskUser = user; // 畳む・移動のときに同じ人で描き直す
   document.getElementById('myTaskTitle').textContent = '📋 '+user+' の担当ボックス';
   renderMyTaskStateFilters(user);
   const body = document.getElementById('myTaskBody');
-  // 全物件から user が担当のタスクを検索
-  // tantoMap[pid][category] === user OR task.tanto === user
-  const results = []; // [{prop, task, state, kanryobi}]
+  // 物件ごとに、user が担当のボックスを集める（tantoMap の職種の担当、なければボックスの担当）
+  const groups = [];
   props.forEach(p=>{
     const ps2 = pStates[p.id]||{};
     const tmap = tantoMap[p.id]||{};
+    const all = [];
     TASKS.forEach(t=>{
-      // 担当判定: タスクのtantoかtantoMapのカテゴリ担当が一致
-      const tTanto = (tmap[t.category]||t.tanto||'');
-      if(tTanto !== user) return;
-      const st = ps2.ts?ps2.ts[t.no]:'着手前';
-      if(myTaskActiveStates.size>0 && !myTaskActiveStates.has(st)) return;
-      results.push({prop:p, task:t, state:st, pid:p.id});
+      if((tmap[t.category]||t.tanto||'') !== user) return;
+      const st = (ps2.ts&&ps2.ts[t.no])||'着手前';
+      const fuyo = st==='完了' && isBoxFuyo(p.id,t.no);
+      const due = myTaskDue(p.id,t);
+      all.push({task:t, state:st, fuyo, due, diff: st==='完了'?null:myTaskDiff(due)});
     });
+    if(!all.length) return;
+    const counted = all.filter(r=>!r.fuyo);
+    const g = {prop:p, all,
+      total: counted.length,
+      done: counted.filter(r=>r.state==='完了').length,
+      over: all.filter(r=>r.diff!==null&&r.diff<0).length,
+      soon: all.filter(r=>r.diff!==null&&r.diff>=0&&r.diff<=7).length,
+      rows: all.filter(r=>myTaskActiveStates.size===0||myTaskActiveStates.has(r.state))};
+    // 未完了を期日の近い順（期日なしは後ろ）、完了は後ろに番号順
+    g.rows.sort((a,b)=>{
+      const ac=a.state==='完了', bc=b.state==='完了';
+      if(ac!==bc) return ac?1:-1;
+      if(!ac){
+        if(a.due&&b.due&&a.due!==b.due) return a.due<b.due?-1:1;
+        if(!!a.due!==!!b.due) return a.due?-1:1;
+      }
+      return a.task.no-b.task.no;
+    });
+    groups.push(g);
   });
 
-  if(!results.length){
+  if(!groups.length){
     body.innerHTML='<div class="empty" style="padding:3rem">担当ボックスがありません</div>';
     return;
   }
 
-  // 物件ごとにグループ化
-  const byProp = {};
-  results.forEach(r=>{
-    if(!byProp[r.pid]) byProp[r.pid]={prop:r.prop, tasks:[]};
-    byProp[r.pid].tasks.push(r);
-  });
+  const sum = groups.reduce((s,g)=>{ s.left+=g.total-g.done; s.over+=g.over; s.soon+=g.soon; return s; },{left:0,over:0,soon:0});
+  const summary = '<div class="mt-summary">'
+    +'<div class="mt-sum-item"><div class="mt-sum-label">担当物件</div><div class="mt-sum-val">'+groups.length+'</div></div>'
+    +'<div class="mt-sum-item"><div class="mt-sum-label">未完了</div><div class="mt-sum-val">'+sum.left+'</div></div>'
+    +'<div class="mt-sum-item'+(sum.over?' mt-sum-over':'')+'"><div class="mt-sum-label">期日超過</div><div class="mt-sum-val">'+sum.over+'</div></div>'
+    +'<div class="mt-sum-item'+(sum.soon?' mt-sum-soon':'')+'"><div class="mt-sum-label">7日以内</div><div class="mt-sum-val">'+sum.soon+'</div></div>'
+    +'</div>';
 
-  body.innerHTML = Object.values(byProp).map(group=>{
-    const p = group.prop;
-    const rows = group.tasks.map(r=>{
+  const index = groups.length>1 ? '<div class="mt-index">'+groups.map(g=>
+      '<button class="mt-chip" onclick="jumpMyTaskProp('+g.prop.id+')">'+g.prop.name
+      +(g.over?'<span class="mt-chip-over">超過'+g.over+'</span>':'')
+      +(g.soon?'<span class="mt-chip-soon">7日内'+g.soon+'</span>':'')
+      +'</button>').join('')+'</div>' : '';
+
+  const cards = groups.map(g=>{
+    const p = g.prop;
+    const pct = g.total ? Math.round(g.done/g.total*100) : 100;
+    const propSt = getPropStatus(p);
+    const closed = myTaskCollapsed.has(p.id);
+    const rows = g.rows.map(r=>{
       const t=r.task, st=r.state;
       const grpCls='g'+(t.group||'').replace(/\s/g,'');
       const catCls='c'+(t.category||'').replace(/\s/g,'');
       const kb = kanryoDates[p.id+'_'+t.no]
         ? kanryoDates[p.id+'_'+t.no].slice(5).replace('-','/')
         : '―';
-      const due = (pStates[p.id]&&pStates[p.id].overrideDue&&pStates[p.id].overrideDue[t.no])
-        || t.due || '';
-      return '<tr class="'+(st==='完了'?'done-row':'')+'">'
+      const stLabel = r.fuyo ? '不要' : st;
+      const stCls = r.fuyo ? 'sFuyo' : 's'+st;
+      const dueHtml = st==='完了' ? (r.due?r.due.slice(5).replace('-','/'):'―') : fmtDue(r.due);
+      const rowCls = st==='完了' ? 'done-row' : (r.diff!==null&&r.diff<0 ? 'mt-row-over' : '');
+      return '<tr class="'+rowCls+'">'
         +'<td class="no-col rc-no">'+t.no+'</td>'
         +'<td class="rc-name"><span class="tlink" onclick="openPropAndModal('+p.id+','+t.no+')">'
         +'<span class="tname-txt">'+t.name+'</span></span></td>'
         +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
         +'<td class="rc-cat">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
-        +'<td class="rc-due'+(fmtDue(due)==='―'?' rc-none':'')+'" style="font-size:13px;white-space:nowrap">'+fmtDue(due)+'</td>'
+        +'<td class="rc-due'+(dueHtml==='―'?' rc-none':'')+'" style="font-size:13px;white-space:nowrap">'+dueHtml+'</td>'
         +'<td class="rc-kb" style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
-        +'<td class="rc-st"><span class="badge s'+st+'">'+st+'</span></td>'
+        +'<td class="rc-st"><span class="badge '+stCls+'">'+stLabel+'</span></td>'
         +'</tr>';
     }).join('');
-
-    return '<div style="margin-bottom:1.5rem">'
-      +'<div style="font-size:16px;font-weight:700;padding:.5rem 0;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);margin-bottom:.5rem;cursor:pointer" onclick="openProp('+p.id+')">'
-      +'🏠 '+p.name+(p.addr?' <span style=\"font-size:12px;color:var(--color-text-secondary,#666);font-weight:400\">'+p.addr+'</span>':'')+'</div>'
-      +'<div class="tbl-wrap"><table class="main rc-tbl">'
-      +'<thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>フェーズ</th><th>カテゴリ</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>'
-      +'<tbody>'+rows+'</tbody></table></div></div>';
+    const table = g.rows.length
+      ? '<div class="tbl-wrap"><table class="main rc-tbl">'
+        +'<thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>フェーズ</th><th>カテゴリ</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>'
+        +'<tbody>'+rows+'</tbody></table></div>'
+      : '<div class="mt-none">この状態のボックスはありません</div>';
+    return '<div class="mt-prop'+(g.over?' mt-prop-over':'')+(closed?' mt-closed':'')+'" id="mtProp_'+p.id+'">'
+      +'<div class="mt-prop-hdr" onclick="toggleMyTaskProp('+p.id+')">'
+      +'<span class="mt-caret">'+(closed?'▶':'▼')+'</span>'
+      +'<div class="mt-prop-main">'
+      +'<div class="mt-prop-name">🏠 '+p.name+' <span class="prop-status-badge pst-'+propSt.replace(/\s/g,'')+'">'+propSt+'</span></div>'
+      +(p.addr?'<div class="mt-prop-addr">📍 '+p.addr+'</div>':'')
+      +'</div>'
+      +'<div class="mt-prop-stats">'
+      +'<div class="mt-prog"><div class="mt-prog-txt">完了 <b>'+g.done+'</b> / '+g.total+'</div>'
+      +'<div class="mt-bar"><div class="mt-bar-in" style="width:'+pct+'%"></div></div></div>'
+      +(g.over?'<span class="mt-tag mt-tag-over">期日超過 '+g.over+'</span>':'')
+      +(g.soon?'<span class="mt-tag mt-tag-soon">7日以内 '+g.soon+'</span>':'')
+      +(!g.over&&!g.soon&&g.done<g.total?'<span class="mt-tag">急ぎなし</span>':'')
+      +(g.done>=g.total?'<span class="mt-tag mt-tag-done">すべて完了</span>':'')
+      +'<button class="mt-open" onclick="event.stopPropagation();openProp('+p.id+')">ロードマップ ›</button>'
+      +'</div></div>'
+      +(closed?'':'<div class="mt-prop-body">'+table+'</div>')
+      +'</div>';
   }).join('');
+
+  body.innerHTML = summary + index + cards;
 }
 
 function openPropAndModal(pid, taskNo){
@@ -2202,7 +2311,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.3.2';
+const APP_VERSION = '0.3.3';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
