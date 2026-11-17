@@ -349,6 +349,43 @@ run('11/10夜 テンプレート：86削除・発注①②③・タスクの分�
   if(!T.find(t=>t.no===35).items.some(i=>i.t==='自分で足したタスク')) throw new Error('編集済み：手を加えた35を変えてしまった');
   check(w2, '編集済み');
 });
+run('11/16 テンプレート：文言の変更・ボックス間の移動に合わせて保存データを移す（0.4.1）', () => {
+  const V7 = w.eval('TEMPLATE_V7');
+  const full = i => Object.assign({c:false,f:false,h:false,hm:'',j:''}, i);
+  Object.entries(V7).forEach(([no,m])=>{ if(w.v6Hash(m.old.map(full))!==m.h) throw new Error(no+' の更新前の文言の印が合わない'); });
+  const arr = (n, on) => Array.from({length:n}, (_,i)=>on.includes(i));
+  const st = () => ({ts:{'123':'進行中','35':'進行中','141':'完了'},
+    done:{'123':arr(5,[0,2]), '35':arr(8,[0,7]), '141':arr(16,[3,15]), '19':arr(125,[85,124])},
+    fuyo:{'123':arr(5,[1])}, help:{}, memo:{}, note:{'123':['','','書いた備考','','']}, overrideDue:{}});
+  const extra = {itemCheckDates:{'1_123_2':'2026-10-03','1_35_7':'2026-10-04','1_141_9':'2026-10-05'}, taskLinks:{'123_0':[{title:'配置図',url:'https://x'}],'141_9':[{title:'消える',url:'https://y'}]}, kanryoDates:{'1_141':'2026-10-02'}};
+  const open = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  const check = (wv, label) => {
+    const P = wv.eval('pStates[1]');
+    if(JSON.stringify(P.done[35])!=='[true,false,false,false,false,true,false,true]') throw new Error(label+'：35（123から移ったチェック） '+JSON.stringify(P.done[35]));
+    if(P.done[123].length!==2 || P.done[123].some(Boolean)) throw new Error(label+'：123 '+JSON.stringify(P.done[123]));
+    if(P.fuyo[35][6]!==true || P.note[35][7]!=='書いた備考') throw new Error(label+'：不要・備考の移動');
+    if(JSON.stringify(P.done[81])!=='[false,false,false,true]') throw new Error(label+'：81（35から移ったチェック） '+JSON.stringify(P.done[81]));
+    if(P.done[141].length!==6 || !P.done[141][2] || !P.done[141][4] || P.done[141].filter(Boolean).length!==2) throw new Error(label+'：141 '+JSON.stringify(P.done[141]));
+    if(P.done[19].length!==120 || !P.done[19][84] || !P.done[19][119] || P.done[19].filter(Boolean).length!==2) throw new Error(label+'：19');
+    if(P.ts[141]!=='完了') throw new Error(label+'：ボックスの状態');
+    const icd = wv.eval('itemCheckDates'), tl = wv.eval('taskLinks');
+    if(icd['1_35_7']!=='2026-10-03' || icd['1_81_3']!=='2026-10-04' || icd['1_123_2'] || icd['1_141_9']) throw new Error(label+'：チェック日 '+JSON.stringify(icd));
+    if(!tl['35_5'] || tl['123_0'] || tl['141_9']) throw new Error(label+'：添付 '+JSON.stringify(Object.keys(tl)));
+    if(wv.eval('kanryoDates')['1_141']!=='2026-10-02') throw new Error(label+'：完了日');
+    wv.openProp(1); wv.openModal(35);
+    if(!wv.document.body.textContent.includes('水道業者と現地確認')) throw new Error(label+'：35が開けない');
+  };
+  check(open(Object.assign({boxNoVer:6, props:[{id:1,name:'旧邸'}], nextPid:2, pStates:{1:st()}}, JSON.parse(JSON.stringify(extra)))), '未編集');
+  // 編集済みの一覧（更新前のテンプレートのまま。142 だけ利用者が手を加えた）
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS))').map(t=>V7[t.no] ? Object.assign({}, t, {items: V7[t.no].old.map(full)}) : t);
+  const b142 = tasks.find(t=>t.no===142); b142.items = b142.items.concat([full({t:'自分で足したタスク',n:'',r:''})]);
+  const w2 = open(Object.assign({boxNoVer:6, props:[{id:1,name:'旧邸'}], nextPid:2, tasks, pStates:{1:st()}}, JSON.parse(JSON.stringify(extra))));
+  const T = w2.eval('TASKS'), bx = no => T.find(t=>t.no===no);
+  if(bx(123).items.length!==2 || bx(35).items.length!==8 || bx(81).items.length!==4) throw new Error('編集済み：一覧が新しくならない');
+  if(bx(142).items.length!==13 || !bx(142).items.some(i=>i.t==='自分で足したタスク')) throw new Error('編集済み：手を加えた142を変えてしまった');
+  check(w2, '編集済み');
+});
 run('備考：補足メモのリンク表示と、物件ごとの備考の保存', () => {
   const html2 = html;
   const wn = new JSDOM(html2, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
@@ -611,7 +648,10 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   if(!box(115).items.some(i=>i.t==='図面職人公開')) throw new Error('図面職人公開が115のタスクになっていない');
   if(box(148).name!=='上棟案内') throw new Error('148が上棟案内でない（番号の詰め）');
   if(T.some(t=>t.name==='着工~監査①'||t.name==='監査①~監査②')) throw new Error('重複の旧148・149が残っている');
-  if(box(145).items.length!==19 || box(147).items.length!==28) throw new Error('145・147のタスク数');
+  if(box(145).items.length!==19 || box(147).items.length!==29) throw new Error('145・147のタスク数');
+  // 2026-11-16 のテンプレート
+  if(box(123).items.length!==2 || box(35).items.length!==8 || box(81).items.length!==4 || box(141).items.length!==6 || box(119).items.length!==21) throw new Error('11/16 のテンプレートのタスク数');
+  if(!box(155).items.some(i=>i.t.includes('気密測定報告書'))) throw new Error('155 に追加したタスクが無い');
   if(box(176).name!=='引渡' || box(176).items.length!==1 || box(176).items[0].t!=='お花の受け取り') throw new Error('176 引渡の中身');
   const gates = Object.fromEntries(w3.eval('GATES').map(g=>[g.name,g.no]));
   ['上棟','木完','工務社検','引渡'].forEach(n=>{ if(box(gates[n]).name!==n) throw new Error('ゲート「'+n+'」の番号がずれた'); });
@@ -622,7 +662,7 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   w3.openAddDlg(); w3.document.getElementById('fName').value='テンプレ邸'; w3.addProperty();
   w3.openProp(w3.eval('props[0].id')); w3.render();
   w3.openModal(145);
-  if(!w3.document.body.textContent.includes('袖の寸法の確認')) throw new Error('145のタスクが表示されない');
+  if(!w3.document.body.textContent.includes('袖壁基礎の高さ')) throw new Error('145のタスクが表示されない');
 });
 run('期日はスプレッドシートと同じ「対象ゲート − 所要日程」（0.2.2）', () => {
   const w4 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
