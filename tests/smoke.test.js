@@ -93,6 +93,7 @@ run('スマートフォン用：管理者設定のボックス一覧に列の印
 run('スマートフォン用：担当ボックスの行に列の印（カード表示用）', () => {
   const pid = w.eval('props[0].id');
   w.eval('tantoMap['+pid+']=Object.assign(tantoMap['+pid+']||{}, {"企画":"担当テスト"})');
+  w.eval('myTaskExpanded=new Set(props.map(p=>p.id))');
   w.renderMyTasks('担当テスト');
   const tbl = d.querySelector('#myTaskBody table.rc-tbl');
   if(!tbl) throw new Error('rc-tbl の表が無い');
@@ -110,7 +111,10 @@ run('担当ボックス：物件ごとのカード（件数・並び順・畳む
   w.eval('pStates['+pid+'].overrideDue['+nos[0]+']="'+ymd(20)+'"');
   w.eval('pStates['+pid+'].overrideDue['+nos[1]+']="'+ymd(-3)+'"');
   w.eval('pStates['+pid+'].ts['+nos[2]+']="完了"');
-  w.eval('myTaskActiveStates=new Set(); myTaskCollapsed=new Set()');
+  w.eval('myTaskActiveStates=new Set(); myTaskExpanded=new Set()');
+  w.renderMyTasks('担当テスト');
+  if(d.querySelector('#mtProp_'+pid+' table')) throw new Error('最初から開いている（閉じた状態が初期）');
+  w.toggleMyTaskProp(pid);
   w.renderMyTasks('担当テスト');
   const card = d.getElementById('mtProp_'+pid);
   if(!card) throw new Error('物件のカードが無い');
@@ -123,8 +127,30 @@ run('担当ボックス：物件ごとのカード（件数・並び順・畳む
   if(!card.querySelector('tbody tr').classList.contains('mt-row-over')) throw new Error('超過の行の色');
   w.toggleMyTaskProp(pid);
   if(d.getElementById('mtProp_'+pid).querySelector('table')) throw new Error('畳めない');
-  w.toggleMyTaskProp(pid);
-  if(!d.getElementById('mtProp_'+pid).querySelector('table')) throw new Error('開けない');
+  w.jumpMyTaskProp(pid);
+  if(!d.getElementById('mtProp_'+pid).querySelector('table')) throw new Error('物件の一覧から移動すると開かない');
+  w.eval('pStates['+pid+']='+saved);
+  w.eval('delete tantoMap['+pid+']["企画"]');
+});
+run('個人ダッシュボード：物件の画面に移らずにチェックできる', () => {
+  const pid = w.eval('props[0].id');
+  w.eval('tantoMap['+pid+']=Object.assign(tantoMap['+pid+']||{}, {"企画":"担当テスト"})');
+  const no = w.eval('TASKS.find(t=>t.category==="企画"&&t.items.length>0&&t.items.length<6).no');
+  const saved = w.eval('JSON.stringify(pStates['+pid+'])');
+  w.goToMyTasks(); w.eval('myTaskExpanded=new Set(['+pid+'])'); w.renderMyTasks('担当テスト');
+  const link = [...d.querySelectorAll('#mtProp_'+pid+' .rc-name .tlink')].find(e=>e.getAttribute('onclick').includes(','+no+')'));
+  if(!link) throw new Error('ボックス名のリンクが無い');
+  link.click();
+  if(active()!=='page-list') throw new Error('物件の画面に移った：'+active());
+  if(!d.getElementById('modalBg').classList.contains('open')) throw new Error('チェック画面が開かない');
+  if(!d.getElementById('mMeta').textContent.includes(w.eval('props[0].name'))) throw new Error('物件名が出ない');
+  const n = w.eval('TASKS.find(t=>t.no==='+no+').items.length');
+  for(let i=0;i<n;i++) w.toggleDone(no,i,true);
+  if(w.eval('pStates['+pid+'].ts['+no+']')!=='完了') throw new Error('全部チェックしても完了にならない');
+  w.closeModal();
+  if(active()!=='page-list') throw new Error('閉じたあと：'+active());
+  const row = [...d.querySelectorAll('#mtProp_'+pid+' tbody tr')].find(r=>r.querySelector('.rc-no').textContent==String(no));
+  if(!row || !row.classList.contains('done-row')) throw new Error('閉じたあとダッシュボードが完了にならない');
   w.eval('pStates['+pid+']='+saved);
   w.eval('delete tantoMap['+pid+']["企画"]');
 });

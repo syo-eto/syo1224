@@ -276,6 +276,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 .mt-hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.25rem}
 .mt-title{flex:1;font-size:17px;font-weight:700}
 /* 担当ボックス：物件ごとのカード */
+.mt-modal-prop{font-size:12px;padding:2px 10px;border-radius:20px;border:.5px solid var(--color-border-secondary,#d0d0d0);background:var(--color-background-secondary,#f7f7f5);color:var(--color-text-primary,#1a1a1a);cursor:pointer;font-weight:700}
 .mt-summary{display:flex;gap:8px;flex-wrap:wrap;margin:.25rem 0 .75rem}
 .mt-sum-item{flex:1 1 90px;max-width:160px;border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:10px;padding:8px 12px;background:var(--color-background-primary,#fff)}
 .mt-sum-label{font-size:11px;color:var(--color-text-secondary,#666)}
@@ -506,7 +507,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.4.1（2026-11-17）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.5.0（2026-11-17）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1502,7 +1503,7 @@ function render(){
 
 // ===== チェックリストモーダル =====
 function openModal(no){
-  openNo=no;
+  openNo=no; modalFromHome=false;
   const t=TASKS.find(x=>x.no===no),st=ps().ts[no];
   document.getElementById('mTitle').textContent='No.'+t.no+'　'+t.name;
   const grpCls='g'+(t.group||'').replace(/\s/g,''),catCls='c'+(t.category||'').replace(/\s/g,'');
@@ -1555,7 +1556,26 @@ function renderModalBody(no){
         +'</div>';
     }).join('');
 }
-function closeModal(){closeOv('modalBg');openNo=null;}
+function closeModal(){
+  closeOv('modalBg');openNo=null;
+  // 個人ダッシュボードから開いたときは、閉じたらダッシュボードの状態・件数を描き直す
+  if(modalFromHome){ modalFromHome=false; if(homeTab==='me'&&document.getElementById('page-list').classList.contains('active')) renderMyTasks(myTaskUser); }
+}
+// 個人ダッシュボードから、物件の画面に移らずにチェック画面を開く
+let modalFromHome=false;
+function openMyTaskModal(pid,no){
+  if(!props.some(p=>p.id===pid)) return;
+  curPid=pid;
+  if(!pStates[pid]) initPState(pid);
+  openModal(no);
+  modalFromHome=true;
+  const p=props.find(x=>x.id===pid);
+  document.getElementById('mMeta').insertAdjacentHTML('afterbegin',
+    '<button class="mt-modal-prop" onclick="openPropFromModal('+pid+')" title="この物件のロードマップを開く">🏠 '+p.name+' ›</button>');
+}
+function openPropFromModal(pid){
+  modalFromHome=false; closeModal(); openProp(pid);
+}
 
 // ===== タスクリンク・ファイル管理 =====
 let linkTargetNo=null, linkTargetIdx=null;
@@ -1950,7 +1970,7 @@ function toggleMyTaskState(s, user){
   renderMyTasks(user);
 }
 
-let myTaskCollapsed = new Set(); // 畳んだ物件（pid）
+let myTaskExpanded = new Set(); // 開いた物件（pid）。最初はすべて閉じておく
 
 function myTaskDue(pid, t){
   return (pStates[pid]&&pStates[pid].overrideDue&&pStates[pid].overrideDue[t.no]) || t.due || '';
@@ -1961,11 +1981,11 @@ function myTaskDiff(due){
   return Math.round((d-today)/864e5);
 }
 function toggleMyTaskProp(pid){
-  if(myTaskCollapsed.has(pid)) myTaskCollapsed.delete(pid); else myTaskCollapsed.add(pid);
+  if(myTaskExpanded.has(pid)) myTaskExpanded.delete(pid); else myTaskExpanded.add(pid);
   renderMyTasks(myTaskUser);
 }
 function jumpMyTaskProp(pid){
-  if(myTaskCollapsed.has(pid)){ myTaskCollapsed.delete(pid); renderMyTasks(myTaskUser); }
+  if(!myTaskExpanded.has(pid)){ myTaskExpanded.add(pid); renderMyTasks(myTaskUser); }
   const el=document.getElementById('mtProp_'+pid);
   if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -2033,7 +2053,7 @@ function renderMyTasks(targetUser){
     const p = g.prop;
     const pct = g.total ? Math.round(g.done/g.total*100) : 100;
     const propSt = getPropStatus(p);
-    const closed = myTaskCollapsed.has(p.id);
+    const closed = !myTaskExpanded.has(p.id);
     const rows = g.rows.map(r=>{
       const t=r.task, st=r.state;
       const grpCls='g'+(t.group||'').replace(/\s/g,'');
@@ -2047,7 +2067,7 @@ function renderMyTasks(targetUser){
       const rowCls = st==='完了' ? 'done-row' : (r.diff!==null&&r.diff<0 ? 'mt-row-over' : '');
       return '<tr class="'+rowCls+'">'
         +'<td class="no-col rc-no">'+t.no+'</td>'
-        +'<td class="rc-name"><span class="tlink" onclick="openPropAndModal('+p.id+','+t.no+')">'
+        +'<td class="rc-name"><span class="tlink" onclick="openMyTaskModal('+p.id+','+t.no+')">'
         +'<span class="tname-txt">'+t.name+'</span></span></td>'
         +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
         +'<td class="rc-cat">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
@@ -2329,7 +2349,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.4.1';
+const APP_VERSION = '0.5.0';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
