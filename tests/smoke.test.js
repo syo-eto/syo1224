@@ -292,8 +292,8 @@ run('38 実行予算 → 原価管理：保存データを差し替える', () =
   const w9 = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
   const T = w9.eval('TASKS'), b38 = T.find(t=>t.no===38);
-  if(b38.name!=='原価管理' || b38.items.length!==146) throw new Error('保存したボックス一覧の38が差し替わらない');
-  if(w9.eval('pStates[1].done[38].length')!==146 || w9.eval('pStates[1].done[38].some(Boolean)')) throw new Error('38のチェックが作り直されていない');
+  if(b38.name!=='原価管理' || b38.items.length!==145) throw new Error('保存したボックス一覧の38が差し替わらない');
+  if(w9.eval('pStates[1].done[38].length')!==145 || w9.eval('pStates[1].done[38].some(Boolean)')) throw new Error('38のチェックが作り直されていない');
   if(w9.eval('pStates[1].ts[38]')!=='進行中' || w9.eval('pStates[1].overrideDue[38]')!=='2026-12-01') throw new Error('38の状態・期日が消えた');
   if(w9.eval('pStates[1].done[39][0]')!==true) throw new Error('他のボックスのチェックが消えた');
   if(w9.eval('itemCheckDates["1_38_0"]') || !w9.eval('itemCheckDates["1_39_0"]')) throw new Error('チェック日');
@@ -386,30 +386,71 @@ run('11/16 テンプレート：文言の変更・ボックス間の移動に合
   const extra = {itemCheckDates:{'1_123_2':'2026-10-03','1_35_7':'2026-10-04','1_141_9':'2026-10-05'}, taskLinks:{'123_0':[{title:'配置図',url:'https://x'}],'141_9':[{title:'消える',url:'https://y'}]}, kanryoDates:{'1_141':'2026-10-02'}};
   const open = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  // 11/16 の移し替えのあとの位置 → 11/20（TEMPLATE_V8）の移し替えのあとの位置
+  const V8 = w.eval('TEMPLATE_V8'), lenNow = no => w.eval('TASKS').find(t=>t.no===no).items.length;
+  const mv = (no,i) => V8[no] ? V8[no].o2n[i] : [no,i];
+  const on = list => { const r = {}; list.forEach(([no,i])=>{ const p = mv(no,i); if(p){ r[p[0]] = r[p[0]] || Array(lenNow(p[0])).fill(false); r[p[0]][p[1]] = true; } }); return r; };
+  const key = (pid,no,i) => { const p = mv(no,i); return p ? (pid?pid+'_':'')+p[0]+'_'+p[1] : null; };
   const check = (wv, label) => {
     const P = wv.eval('pStates[1]');
-    if(JSON.stringify(P.done[35])!=='[true,false,false,false,false,true,false,true]') throw new Error(label+'：35（123から移ったチェック） '+JSON.stringify(P.done[35]));
+    const exp = on([[35,0],[35,5],[35,7],[81,3],[141,2],[141,4],[19,84],[19,119]]);
+    Object.entries(exp).forEach(([no,a])=>{
+      const got = P.done[no].map(Boolean);
+      if(JSON.stringify(got)!==JSON.stringify(a)) throw new Error(label+'：'+no+' のチェック '+JSON.stringify(got.map((v,i)=>v?i:-1).filter(i=>i>=0)));
+    });
     if(P.done[123].length!==2 || P.done[123].some(Boolean)) throw new Error(label+'：123 '+JSON.stringify(P.done[123]));
-    if(P.fuyo[35][6]!==true || P.note[35][7]!=='書いた備考') throw new Error(label+'：不要・備考の移動');
-    if(JSON.stringify(P.done[81])!=='[false,false,false,true]') throw new Error(label+'：81（35から移ったチェック） '+JSON.stringify(P.done[81]));
-    if(P.done[141].length!==6 || !P.done[141][2] || !P.done[141][4] || P.done[141].filter(Boolean).length!==2) throw new Error(label+'：141 '+JSON.stringify(P.done[141]));
-    if(P.done[19].length!==120 || !P.done[19][84] || !P.done[19][119] || P.done[19].filter(Boolean).length!==2) throw new Error(label+'：19');
+    const f6 = mv(35,6), n7 = mv(35,7);
+    if(P.fuyo[f6[0]][f6[1]]!==true || P.note[n7[0]][n7[1]]!=='書いた備考') throw new Error(label+'：不要・備考の移動');
     if(P.ts[141]!=='完了') throw new Error(label+'：ボックスの状態');
     const icd = wv.eval('itemCheckDates'), tl = wv.eval('taskLinks');
-    if(icd['1_35_7']!=='2026-10-03' || icd['1_81_3']!=='2026-10-04' || icd['1_123_2'] || icd['1_141_9']) throw new Error(label+'：チェック日 '+JSON.stringify(icd));
-    if(!tl['35_5'] || tl['123_0'] || tl['141_9']) throw new Error(label+'：添付 '+JSON.stringify(Object.keys(tl)));
+    if(icd[key(1,35,7)]!=='2026-10-03' || icd[key(1,81,3)]!=='2026-10-04' || icd['1_123_2'] || icd['1_141_9']) throw new Error(label+'：チェック日 '+JSON.stringify(icd));
+    if(!tl[key(0,35,5)] || tl['123_0'] || tl['141_9']) throw new Error(label+'：添付 '+JSON.stringify(Object.keys(tl)));
     if(wv.eval('kanryoDates')['1_141']!=='2026-10-02') throw new Error(label+'：完了日');
     wv.openProp(1); wv.openModal(35);
     if(!wv.document.body.textContent.includes('水道業者と現地確認')) throw new Error(label+'：35が開けない');
   };
   check(open(Object.assign({boxNoVer:6, props:[{id:1,name:'旧邸'}], nextPid:2, pStates:{1:st()}}, JSON.parse(JSON.stringify(extra)))), '未編集');
   // 編集済みの一覧（更新前のテンプレートのまま。142 だけ利用者が手を加えた）
-  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS))').map(t=>V7[t.no] ? Object.assign({}, t, {items: V7[t.no].old.map(full)}) : t);
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS_V7))').map(t=>V7[t.no] ? Object.assign({}, t, {items: V7[t.no].old.map(full)}) : t);
   const b142 = tasks.find(t=>t.no===142); b142.items = b142.items.concat([full({t:'自分で足したタスク',n:'',r:''})]);
   const w2 = open(Object.assign({boxNoVer:6, props:[{id:1,name:'旧邸'}], nextPid:2, tasks, pStates:{1:st()}}, JSON.parse(JSON.stringify(extra))));
   const T = w2.eval('TASKS'), bx = no => T.find(t=>t.no===no);
-  if(bx(123).items.length!==2 || bx(35).items.length!==8 || bx(81).items.length!==4) throw new Error('編集済み：一覧が新しくならない');
+  if(bx(123).items.length!==2 || bx(35).items.length!==7 || bx(81).items.length!==2) throw new Error('編集済み：一覧が新しくならない');
   if(bx(142).items.length!==13 || !bx(142).items.some(i=>i.t==='自分で足したタスク')) throw new Error('編集済み：手を加えた142を変えてしまった');
+  check(w2, '編集済み');
+});
+run('11/20 テンプレート：35・81から78への移動、62の入れ替えに合わせて保存データを移す（0.5.1）', () => {
+  const V8 = w.eval('TEMPLATE_V8');
+  const full = i => Object.assign({c:false,f:false,h:false,hm:'',j:''}, i);
+  Object.entries(V8).forEach(([no,m])=>{ if(w.v6Hash(m.old.map(full))!==m.h) throw new Error(no+' の更新前の文言の印が合わない'); });
+  const arr = (n, on) => Array.from({length:n}, (_,i)=>on.includes(i));
+  const st = () => ({ts:{'35':'進行中','81':'進行中','62':'進行中'},
+    done:{'35':arr(8,[0,7]), '81':arr(4,[0,3]), '62':arr(6,[0]), '61':arr(10,[7])}, fuyo:{}, help:{}, memo:{}, note:{}, overrideDue:{}});
+  const extra = {itemCheckDates:{'1_81_0':'2026-11-01','1_62_0':'2026-11-02','1_61_7':'2026-11-03'}, taskLinks:{'35_0':[{title:'仮設計画',url:'https://x'}]}};
+  const open = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  const idx = a => a.map((v,i)=>v?i:-1).filter(i=>i>=0).join(',');
+  const check = (wv, label) => {
+    const P = wv.eval('pStates[1]');
+    if(idx(P.done[78])!=='11,12,15' || P.done[78].length!==18) throw new Error(label+'：78 '+idx(P.done[78]));
+    if(idx(P.done[35])!=='6' || P.done[35].length!==7) throw new Error(label+'：35 '+idx(P.done[35]));
+    if(P.done[81].length!==2 || P.done[81].some(Boolean)) throw new Error(label+'：81');
+    if(P.done[62].length!==2 || P.done[62].some(Boolean)) throw new Error(label+'：62（入れ替わったタスクのチェックは消す）');
+    if(idx(P.done[61])!=='9') throw new Error(label+'：61 '+idx(P.done[61]));
+    const icd = wv.eval('itemCheckDates'), tl = wv.eval('taskLinks');
+    if(icd['1_78_12']!=='2026-11-01' || icd['1_61_9']!=='2026-11-03' || icd['1_62_0'] || icd['1_81_0']) throw new Error(label+'：チェック日 '+JSON.stringify(icd));
+    if(!tl['78_11'] || tl['35_0']) throw new Error(label+'：添付 '+JSON.stringify(Object.keys(tl)));
+    wv.openProp(1); wv.openModal(78);
+    if(!wv.document.body.textContent.includes('家価値登録')) throw new Error(label+'：78が開けない');
+  };
+  check(open(Object.assign({boxNoVer:7, props:[{id:1,name:'旧邸'}], nextPid:2, pStates:{1:st()}}, JSON.parse(JSON.stringify(extra)))), '未編集');
+  // 編集済みの一覧（11/20 の更新前のまま。120 だけ利用者が手を加えた）
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS_V7))');
+  const b120 = tasks.find(t=>t.no===120); b120.items = b120.items.concat([full({t:'自分で足したタスク',n:'',r:''})]);
+  const w2 = open(Object.assign({boxNoVer:7, props:[{id:1,name:'旧邸'}], nextPid:2, tasks, pStates:{1:st()}}, JSON.parse(JSON.stringify(extra))));
+  const T = w2.eval('TASKS'), bx = no => T.find(t=>t.no===no);
+  if(bx(78).items.length!==18 || bx(81).items.length!==2 || bx(62).items.length!==2) throw new Error('編集済み：一覧が新しくならない');
+  if(bx(120).items.length!==44 || !bx(120).items.some(i=>i.t==='自分で足したタスク')) throw new Error('編集済み：手を加えた120を変えてしまった');
   check(w2, '編集済み');
 });
 run('備考：補足メモのリンク表示と、物件ごとの備考の保存', () => {
@@ -676,13 +717,16 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   if(T.some(t=>t.name==='着工~監査①'||t.name==='監査①~監査②')) throw new Error('重複の旧148・149が残っている');
   if(box(145).items.length!==19 || box(147).items.length!==29) throw new Error('145・147のタスク数');
   // 2026-11-16 のテンプレート
-  if(box(123).items.length!==2 || box(35).items.length!==8 || box(81).items.length!==4 || box(141).items.length!==6 || box(119).items.length!==21) throw new Error('11/16 のテンプレートのタスク数');
+  if(box(123).items.length!==2 || box(35).items.length!==7 || box(81).items.length!==2 || box(141).items.length!==6 || box(119).items.length!==21) throw new Error('11/16 のテンプレートのタスク数');
+  // 2026-11-20 のテンプレート
+  if(box(19).items.length!==123 || box(78).items.length!==18 || box(59).items.length!==2 || box(61).items.length!==12 || box(62).items.length!==2 || box(120).items.length!==44) throw new Error('11/20 のテンプレートのタスク数');
+  if(!box(78).items.some(i=>i.t.startsWith('仮設計画をたてた')) || box(81).items.some(i=>i.t.startsWith('システムバス'))) throw new Error('11/20：35・81から78への移動');
   if(!box(155).items.some(i=>i.t.includes('気密測定報告書'))) throw new Error('155 に追加したタスクが無い');
   if(box(176).name!=='引渡' || box(176).items.length!==1 || box(176).items[0].t!=='お花の受け取り') throw new Error('176 引渡の中身');
   const gates = Object.fromEntries(w3.eval('GATES').map(g=>[g.name,g.no]));
   ['上棟','木完','工務社検','引渡'].forEach(n=>{ if(box(gates[n]).name!==n) throw new Error('ゲート「'+n+'」の番号がずれた'); });
   if(box(116).group!=='着工前工務業務') throw new Error('116のフェーズ');
-  if(box(38).name!=='原価管理' || box(38).items.length!==146 || box(116).name!=='実行予算') throw new Error('38 原価管理（実行予算の重複の修正）');
+  if(box(38).name!=='原価管理' || box(38).items.length!==145 || box(116).name!=='実行予算') throw new Error('38 原価管理（実行予算の重複の修正）');
   if(T.some(t=>t.group==='引渡し') || box(176).group!=='引渡前') throw new Error('フェーズ「引渡し」が「引渡前」になっていない');
   // 着工後フェーズのボックスを開いて表示できる
   w3.openAddDlg(); w3.document.getElementById('fName').value='テンプレ邸'; w3.addProperty();
