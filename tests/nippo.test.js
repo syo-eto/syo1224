@@ -124,6 +124,13 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     assert(m.works.length === 54, 'works');
   });
 
+  await run('Apps Script を通さずに開くと、止まらずに案内が出る', () => {
+    const dom = new JSDOM(html, {runScripts: 'dangerously', url: 'https://example.test/', beforeParse(win) { win.scrollTo = () => {}; }});
+    const t = dom.window.document.getElementById('msg').textContent;
+    assert(t.includes('単体では動きません'), t);
+    assert(dom.window.document.getElementById('loading').classList.contains('hidden'), '読み込み中のまま');
+  });
+
   // ── 画面 ──
   let w = openPage(gas), d = w.document;
   await tick(); await tick();

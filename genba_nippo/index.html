@@ -340,7 +340,18 @@ button{font:inherit;cursor:pointer}
   $('again').onclick = function () { startForm(state.date); };
 
   /* ── 起動 ── */
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    show('');
+    flash('このページは単体では動きません。Apps Script の「デプロイ → ウェブアプリ」で出た URL（…/exec）から開いてください。', true);
+    return;
+  }
+  var slow = setTimeout(function () {
+    if (master) return;
+    show('');
+    flash('読み込みに時間がかかっています。電波の良い所で開き直してください。直らないときは、管理者が Apps Script の「実行数」でエラーを確かめてください。', true);
+  }, 30000);
   call('getMaster', [], function (m) {
+    clearTimeout(slow);
     master = m;
     if (!m.workers.length || !m.sites.length || !m.works.length) {
       show('');
@@ -349,7 +360,7 @@ button{font:inherit;cursor:pointer}
     }
     who = load(WHO_KEY);
     if (!who || !workerById(who.workerId)) startPick(); else startForm(m.today);
-  }, function (t) { show(''); flash('読み込めませんでした：' + t, true); });
+  }, function (t) { clearTimeout(slow); show(''); flash('読み込めませんでした：' + t, true); });
 })();
 </script>
 </body>
