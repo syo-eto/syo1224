@@ -761,11 +761,12 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   // 2026-11-16 のテンプレート
   if(box(123).items.length!==2 || box(35).items.length!==6 || box(81).items.length!==2 || box(141).items.length!==6 || box(119).items.length!==21) throw new Error('11/16 のテンプレートのタスク数');
   // 2026-11-20 のテンプレート
-  if(box(19).items.length!==121 || box(78).items.length!==18 || box(59).items.length!==2 || box(61).items.length!==15 || box(62).items.length!==3 || box(120).items.length!==44) throw new Error('11/20 のテンプレートのタスク数');
+  if(box(19).items.length!==121 || box(78).items.length!==18 || box(59).items.length!==2 || box(61).items.length!==12 || box(62).items.length!==3 || box(120).items.length!==44) throw new Error('11/20 のテンプレートのタスク数');
   if(!box(78).items.some(i=>i.t.startsWith('仮設計画をたてた')) || box(81).items.some(i=>i.t.startsWith('システムバス'))) throw new Error('11/20：35・81から78への移動');
   if(!box(155).items.some(i=>i.t.includes('気密測定報告書'))) throw new Error('155 に追加したタスクが無い');
   // 2026-11-24 のテンプレート：62の2件が新しい185「地盤改良発注」へ。62は企画・所要日程73日
   if(box(185).name!=='地盤改良発注' || box(185).group!=='完成宅地' || box(185).category!=='現場監督' || box(185).items.length!==2 || !box(185).items[0].t.startsWith('地盤改良工事発注')) throw new Error('11/24：185 地盤改良発注');
+  if(box(61).items.some(i=>i.t.includes('入念な転圧'))) throw new Error('11/24：61に62と重複のタスクが残っている');
   if(box(62).category!=='企画' || w3.eval('TASK_GATE_MAP[62].days')!==73 || w3.eval('TASK_GATE_MAP[185].days')!==66) throw new Error('11/24：62・185 の担当・所要日程');
   if(box(18).items.length!==40 || box(38).items.length!==147 || box(56).items.length!==2 || box(83).items.length!==30 || box(85).items.length!==130 || box(115).items.length!==11 || box(132).items.length!==5 || box(133).items.length!==12) throw new Error('11/24 のテンプレートのタスク数');
   if(box(176).name!=='引渡' || box(176).items.length!==1 || box(176).items[0].t!=='お花の受け取り') throw new Error('176 引渡の中身');
