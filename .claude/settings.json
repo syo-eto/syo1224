@@ -5,7 +5,14 @@
       "mcp__Claude_Docs__update",
       "mcp__Claude_Docs__read",
       "mcp__Claude_Docs__query",
-      "mcp__Claude_Docs__guide"
+      "mcp__Claude_Docs__guide",
+      "mcp__Google_Drive__search_files",
+      "mcp__Google_Drive__get_file_metadata",
+      "mcp__Google_Drive__download_file_content",
+      "mcp__Google_Sheets__get_spreadsheet",
+      "mcp__Google_Sheets__get_values",
+      "mcp__Google_Sheets__update_values",
+      "mcp__Google_Sheets__update_spreadsheet"
     ]
   }
 }
