@@ -501,6 +501,10 @@ run('102 BELS申請のフェーズ変更：編集済みの保存データにも�
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify({boxNoVer:9, props:[], nextPid:1, pStates:{}, tasks})); }}).window;
   if(wv.eval('TASKS').find(t=>t.no===102).group!=='着工後') throw new Error('編集済みの一覧の102が着工後にならない');
 });
+run('ホームのタブは左が個人ダッシュボード、右が全体ダッシュボード（0.5.5）', () => {
+  const tabs = [...d.querySelectorAll('.home-tab')].map(b=>b.id);
+  if(JSON.stringify(tabs)!==JSON.stringify(['homeTab-me','homeTab-all'])) throw new Error('タブの並び '+tabs.join(','));
+});
 run('期日超過のボックスはボックス名を赤で表示する（0.5.3）', () => {
   const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7_user', JSON.stringify('江藤　奨')); }}).window;
