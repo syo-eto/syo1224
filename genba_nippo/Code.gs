@@ -7,6 +7,8 @@
  */
 
 var APP_VERSION = '0.1.0';
+// 独立した Apps Script プロジェクトとして使うときに開くスプレッドシート（スプレッドシートの「拡張機能 → Apps Script」に貼ったときは使わない）
+var SPREADSHEET_ID = '1qAYpwPwqDHQFj-2kVYcP9w1H-VHUEp5cpqGn2DvMQUU';
 var TZ = 'Asia/Tokyo';
 var MAX_HOURS_PER_DAY = 24;
 
@@ -95,6 +97,7 @@ function doGet() {
 }
 
 function onOpen() {
+  // スプレッドシートに組み込んだときだけメニューが出る（独立したプロジェクトでは呼ばれない）
   SpreadsheetApp.getUi().createMenu('大工日報')
     .addItem('初期設定（シートを作る）', 'setup')
     .addItem('歩掛を計算し直す', 'updateSummary')
@@ -391,7 +394,7 @@ function toYmd_(v) {
 function normDate_(v) { return toYmd_(v); }
 
 function sheet_(def) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = book_();
   var sh = ss.getSheetByName(def.name);
   if (!sh) {
     sh = ss.insertSheet(def.name);
@@ -399,6 +402,10 @@ function sheet_(def) {
     sh.setFrozenRows(1);
   }
   return sh;
+}
+
+function book_() {
+  return SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(SPREADSHEET_ID);
 }
 
 function readObjects_(def) {
