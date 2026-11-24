@@ -131,6 +131,7 @@ table.main th{padding:8px 10px;text-align:left;font-size:13px;font-weight:500;co
 table.main td{padding:9px 10px;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);vertical-align:middle}
 table.main tr:last-child td{border-bottom:none}
 table.main tr:hover td{background:var(--color-background-secondary,#f5f5f5)}
+.tname-txt.over{color:#A32D2D;font-weight:500}
 .done-row .tlink .tname-txt{text-decoration:line-through;color:var(--color-text-tertiary,#aaa)}
 /* 完了したボックスは行全体に横線を引いてグレーにする（ロードマップ・担当ボックス。スマホのカードも同じ） */
 .done-row td,.done-row td *{color:var(--color-text-tertiary,#aaa)!important;text-decoration:line-through}
@@ -507,7 +508,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.5.2（2026-11-24）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.5.3（2026-11-24）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -949,14 +950,18 @@ function currentPhase(pid){
   }
   return '引渡前';
 }
+// 期日を過ぎていて完了していないボックス（ボックス名を赤で表示し、期日超過の件数に数える）
+function isBoxOverdue(pid,no){
+  const st=pStates[pid]; if(!st) return false;
+  if(st.ts[no]==='完了') return false;
+  const t=TASKS.find(x=>x.no===no);
+  const due=(st.overrideDue&&st.overrideDue[no])||(t&&t.due);
+  if(!due) return false;
+  const d=new Date(due);d.setHours(0,0,0,0);
+  return d<today;
+}
 function overdueCount(pid){
-  return TASKS.filter(t=>{
-    if(pStates[pid].ts[t.no]==='完了')return false;
-    const due=(pStates[pid].overrideDue&&pStates[pid].overrideDue[t.no])||t.due;
-    if(!due)return false;
-    const d=new Date(due);d.setHours(0,0,0,0);
-    return d<today;
-  }).length;
+  return TASKS.filter(t=>isBoxOverdue(pid,t.no)).length;
 }
 function helpCount(pid){
   return TASKS.filter(t=>pStates[pid].help[t.no]&&pStates[pid].help[t.no].some(Boolean)).length;
@@ -1489,7 +1494,7 @@ function render(){
     return '<tr class="'+(st==='完了'?'done-row':'')+'">'
       +'<td class="no-col rc-no">'+t.no+'</td>'
       +'<td class="rc-name"><span class="tlink" onclick="openModal('+t.no+')">'
-      +'<span class="tlink-top">'+(hasHelp?'<span class="help-dot"></span>':'')+'<span class="tname-txt">'+t.name+'</span>'+(prog?'<span class="cnt">'+prog.doneN+'/'+prog.activeTotal+'</span>':'')+'</span>'
+      +'<span class="tlink-top">'+(hasHelp?'<span class="help-dot"></span>':'')+'<span class="tname-txt'+(isBoxOverdue(curPid,t.no)?' over':'')+'">'+t.name+'</span>'+(prog?'<span class="cnt">'+prog.doneN+'/'+prog.activeTotal+'</span>':'')+'</span>'
       +(kb!=='―'?'<span class="kanryobi-txt">✔ '+kb+'</span>':'')
       +'</span></td>'
       +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
@@ -2068,7 +2073,7 @@ function renderMyTasks(targetUser){
       return '<tr class="'+rowCls+'">'
         +'<td class="no-col rc-no">'+t.no+'</td>'
         +'<td class="rc-name"><span class="tlink" onclick="openMyTaskModal('+p.id+','+t.no+')">'
-        +'<span class="tname-txt">'+t.name+'</span></span></td>'
+        +'<span class="tname-txt'+(isBoxOverdue(p.id,t.no)?' over':'')+'">'+t.name+'</span></span></td>'
         +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
         +'<td class="rc-cat">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
         +'<td class="rc-due'+(dueHtml==='―'?' rc-none':'')+'" style="font-size:13px;white-space:nowrap">'+dueHtml+'</td>'
@@ -2349,7 +2354,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.5.2';
+const APP_VERSION = '0.5.3';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う

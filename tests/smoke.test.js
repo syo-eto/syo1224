@@ -495,6 +495,20 @@ run('11/24 テンプレート：62から新しい185「地盤改良発注」へ�
   if(T.find(t=>t.no===62).items.length!==3) throw new Error('編集済み：一覧が新しくならない');
   check(w2, '編集済み');
 });
+run('期日超過のボックスはボックス名を赤で表示する（0.5.3）', () => {
+  const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7_user', JSON.stringify('江藤　奨')); }}).window;
+  const dv = wv.document;
+  wv.openAddDlg(); dv.getElementById('fName').value='超過邸'; wv.addProperty();
+  const pid = wv.eval('props[0].id');
+  wv.eval('pStates['+pid+'].overrideDue={12:"2000-01-01",13:"2000-01-01",14:"2999-01-01"}; pStates['+pid+'].ts[13]="完了"; tantoMap['+pid+']={"企画":curUser||"江藤　奨"}');
+  wv.openProp(pid); wv.render();
+  const nameOf = no => [...dv.querySelectorAll('#tbody tr')].find(tr=>tr.querySelector('.rc-no').textContent===String(no)).querySelector('.tname-txt');
+  if(!nameOf(12).classList.contains('over')) throw new Error('期日を過ぎた未完了のボックスが赤でない');
+  if(nameOf(13).classList.contains('over')) throw new Error('完了のボックスが赤');
+  if(nameOf(14).classList.contains('over') || nameOf(15).classList.contains('over')) throw new Error('期日前・期日なしのボックスが赤');
+  if(wv.overdueCount(pid)!==1) throw new Error('期日超過の件数 '+wv.overdueCount(pid));
+});
 run('備考：補足メモのリンク表示と、物件ごとの備考の保存', () => {
   const html2 = html;
   const wn = new JSDOM(html2, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
