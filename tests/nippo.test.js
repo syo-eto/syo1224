@@ -94,19 +94,19 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
   const gas = makeGas();
   const {ctx, sheets} = gas;
 
-  await run('初期設定：シートと作業内容（新築26・リノベ30）を作る', () => {
+  await run('初期設定：シートと作業内容（新築24・リノベ30）を作る', () => {
     ctx.setup();
     ['現場', '作業員', '作業内容', '仕様項目', '材料', '日報', '日報_作業', '日報_材料', '歩掛'].forEach(n => assert(sheets[n], n + ' が無い'));
     const works = obj(sheets['作業内容']);
-    assert(works.filter(w => w['種別（新築／リノベ）'] === '新築').length === 26, '新築 ' + works.length);
+    assert(works.filter(w => w['種別（新築／リノベ）'] === '新築').length === 24, '新築 ' + works.length);
     assert(works.filter(w => w['種別（新築／リノベ）'] === 'リノベ').length === 30, 'リノベ');
     ctx.setup();
-    assert(obj(sheets['作業内容']).length === 56, '2回目で増えた');
+    assert(obj(sheets['作業内容']).length === 54, '2回目で増えた');
   });
   await run('仕様の読み取り（括弧の中の「／」、括弧なしの「既製／造作」、選択肢なし）', () => {
     const p = ctx.parseSpecDef_('無垢／複合・材種（オーク／パイン／スギ など）・厚み');
     assert(JSON.stringify(p) === JSON.stringify([{name: '無垢／複合', choices: ['無垢', '複合']}, {name: '材種', choices: ['オーク', 'パイン', 'スギ']}, {name: '厚み', choices: []}]), JSON.stringify(p));
-    const floor = obj(sheets['仕様項目']).filter(s => s['作業ID'] === 'N12');
+    const floor = obj(sheets['仕様項目']).filter(s => s['作業ID'] === 'N11');
     assert(floor.length === 6, '床張りの項目 ' + floor.length);
   });
 
@@ -121,7 +121,7 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     const json = JSON.stringify(m);
     assert(!json.includes('2500') && !json.includes('2800') && !json.includes('1234'), '時給か暗証番号が入っている');
     assert(m.workers[1].hasPin === true && m.workers[0].hasPin === false, 'hasPin');
-    assert(m.works.length === 56, 'works');
+    assert(m.works.length === 54, 'works');
   });
 
   // ── 画面 ──
@@ -154,10 +154,10 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
   });
   await run('作業内容を選ぶと仕様・時間・数量（単位つき）が出る', () => {
     const card = d.querySelector('[data-i="0"]');
-    setVal(w, card.querySelector('[data-f="workId"]'), 'N12');
+    setVal(w, card.querySelector('[data-f="workId"]'), 'N11');
     const c = d.querySelector('[data-i="0"]');
     assert(c.querySelectorAll('[data-spec]').length === 6, '仕様の欄 ' + c.querySelectorAll('[data-spec]').length);
-    assert(c.querySelector('.unit').textContent === '㎡', '単位');
+    assert(c.querySelector('.unit').textContent === 'ケース', '単位');
     assert(c.querySelector('[data-f="hours"]').options.length === 13, '時間の選択肢（1〜12）');
   });
   await run('入力が足りないと送らない', () => {
@@ -191,7 +191,7 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     storageSnapshot = {...w.localStorage};
     const w2 = openPage(gas, storageSnapshot); await tick(); await tick();
     const c = w2.document.querySelector('[data-i="0"]');
-    assert(c && c.querySelector('[data-f="workId"]').value === 'N12', '戻らない');
+    assert(c && c.querySelector('[data-f="workId"]').value === 'N11', '戻らない');
     assert(w2.document.getElementById('dateNote').textContent.includes('戻しました'), 'お知らせ');
     assert(w2.document.getElementById('totalHours').textContent === '6', '合計');
   });
@@ -229,7 +229,7 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     const w3 = openPage(gas, {daiku_nippo_who: JSON.stringify({workerId: 'W01', pin: ''})}); await tick(); await tick(); await tick();
     assert(w3.document.getElementById('send').disabled, '送信ボタンが押せる');
     assert(w3.document.getElementById('dateNote').textContent.includes('送信済み'), 'お知らせ');
-    let msg = ''; try { ctx.submitReport({workerId: 'W01', pin: '', date: TODAY, lines: [{siteId: 'S01', workId: 'N24', spec: {}, hours: 1, qty: ''}]}); } catch (e) { msg = e.message; }
+    let msg = ''; try { ctx.submitReport({workerId: 'W01', pin: '', date: TODAY, lines: [{siteId: 'S01', workId: 'N22', spec: {}, hours: 1, qty: ''}]}); } catch (e) { msg = e.message; }
     assert(msg.includes('送信済み'), '上書きできてしまう: ' + msg);
   });
   await run('前日の分もあとから送れる', () => {
@@ -241,13 +241,13 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     const base = {workerId: 'W02', pin: '1234', date: TODAY};
     bad({...base, pin: '0000', lines: []}, '暗証番号が違います');
     bad({...base, workerId: 'W03', lines: []}, '名前を選んでください');
-    bad({...base, date: TOMORROW, lines: [{siteId: 'S01', workId: 'N24', hours: 1}]}, '先の日付');
-    bad({...base, lines: [{siteId: 'S02', workId: 'N24', hours: 1}]}, 'リノベの作業ではありません');
-    bad({...base, lines: [{siteId: 'S03', workId: 'N24', hours: 1}]}, '現場を選んでください');
-    bad({...base, lines: [{siteId: 'S01', workId: 'N24', hours: 1.5}]}, '1時間刻み');
+    bad({...base, date: TOMORROW, lines: [{siteId: 'S01', workId: 'N22', hours: 1}]}, '先の日付');
+    bad({...base, lines: [{siteId: 'S02', workId: 'N22', hours: 1}]}, 'リノベの作業ではありません');
+    bad({...base, lines: [{siteId: 'S03', workId: 'N22', hours: 1}]}, '現場を選んでください');
+    bad({...base, lines: [{siteId: 'S01', workId: 'N22', hours: 1.5}]}, '1時間刻み');
     bad({...base, lines: [{siteId: 'S01', workId: 'N03', spec: {'断面': '27×105'}, hours: 2, qty: ''}]}, '数量（本）');
     bad({...base, lines: [{siteId: 'S01', workId: 'N03', spec: {}, hours: 2, qty: 3}]}, '「断面」を選んでください');
-    bad({...base, lines: [{siteId: 'S01', workId: 'N24', hours: 13}, {siteId: 'S01', workId: 'N25', hours: 12}]}, '24時間を超えて');
+    bad({...base, lines: [{siteId: 'S01', workId: 'N22', hours: 13}, {siteId: 'S01', workId: 'N23', hours: 12}]}, '24時間を超えて');
   });
   await run('材料が登録されると材料の欄が出て、日報_材料にたまる', async () => {
     sheets['材料'].data.push(['M01', 'フロア釘', '38mm', '箱', 1200, '2026-11-01', 'TRUE']);
@@ -257,7 +257,7 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     assert(!d4.getElementById('matSection').classList.contains('hidden'), '材料の欄が出ない');
     const c = () => d4.querySelector('[data-i="0"]');
     setVal(w4, c().querySelector('[data-f="siteId"]'), 'S01');
-    setVal(w4, c().querySelector('[data-f="workId"]'), 'N24');
+    setVal(w4, c().querySelector('[data-f="workId"]'), 'N22');
     setVal(w4, c().querySelector('[data-f="hours"]'), '1');
     d4.getElementById('addMat').click();
     const m = () => d4.querySelector('[data-m="0"]');
