@@ -501,9 +501,14 @@ run('102 BELS申請のフェーズ変更：編集済みの保存データにも�
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify({boxNoVer:9, props:[], nextPid:1, pStates:{}, tasks})); }}).window;
   if(wv.eval('TASKS').find(t=>t.no===102).group!=='着工後') throw new Error('編集済みの一覧の102が着工後にならない');
 });
-run('ホームのタブは左が個人ダッシュボード、右が全体ダッシュボード（0.5.5）', () => {
+run('ホームのタブは左が個人ダッシュボード、右が全体ダッシュボード。起動時は個人（0.5.5・0.5.6）', () => {
   const tabs = [...d.querySelectorAll('.home-tab')].map(b=>b.id);
   if(JSON.stringify(tabs)!==JSON.stringify(['homeTab-me','homeTab-all'])) throw new Error('タブの並び '+tabs.join(','));
+  // 起動時は個人ダッシュボード（前回が全体でも）
+  const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7_home','all'); }}).window;
+  if(!wv.document.getElementById('homePanel-me').classList.contains('on') || wv.document.getElementById('homePanel-all').classList.contains('on')) throw new Error('起動時に個人ダッシュボードが開かない');
+  if(!wv.document.getElementById('homeTab-me').classList.contains('on')) throw new Error('個人ダッシュボードのタブが選ばれていない');
 });
 run('期日超過のボックスはボックス名を赤で表示する（0.5.3）', () => {
   const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
