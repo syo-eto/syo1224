@@ -94,14 +94,14 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
   const gas = makeGas();
   const {ctx, sheets} = gas;
 
-  await run('初期設定：シートと作業内容（新築26・リノベ24）を作る', () => {
+  await run('初期設定：シートと作業内容（新築26・リノベ30）を作る', () => {
     ctx.setup();
     ['現場', '作業員', '作業内容', '仕様項目', '材料', '日報', '日報_作業', '日報_材料', '歩掛'].forEach(n => assert(sheets[n], n + ' が無い'));
     const works = obj(sheets['作業内容']);
     assert(works.filter(w => w['種別（新築／リノベ）'] === '新築').length === 26, '新築 ' + works.length);
-    assert(works.filter(w => w['種別（新築／リノベ）'] === 'リノベ').length === 24, 'リノベ');
+    assert(works.filter(w => w['種別（新築／リノベ）'] === 'リノベ').length === 30, 'リノベ');
     ctx.setup();
-    assert(obj(sheets['作業内容']).length === 50, '2回目で増えた');
+    assert(obj(sheets['作業内容']).length === 56, '2回目で増えた');
   });
   await run('仕様の読み取り（括弧の中の「／」、括弧なしの「既製／造作」、選択肢なし）', () => {
     const p = ctx.parseSpecDef_('無垢／複合・材種（オーク／パイン／スギ など）・厚み');
@@ -121,7 +121,7 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     const json = JSON.stringify(m);
     assert(!json.includes('2500') && !json.includes('2800') && !json.includes('1234'), '時給か暗証番号が入っている');
     assert(m.workers[1].hasPin === true && m.workers[0].hasPin === false, 'hasPin');
-    assert(m.works.length === 50, 'works');
+    assert(m.works.length === 56, 'works');
   });
 
   // ── 画面 ──
@@ -147,10 +147,10 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     const card = () => d.querySelector('[data-i="0"]');
     setVal(w, card().querySelector('[data-f="siteId"]'), 'S02');
     const opts = [...card().querySelector('[data-f="workId"]').options].map(o => o.textContent);
-    assert(opts.includes('土台調整') && !opts.includes('建方（上棟）'), 'リノベの一覧でない');
+    assert(opts.includes('柱タチ調整') && !opts.includes('建方（上棟）'), 'リノベの一覧でない');
     setVal(w, card().querySelector('[data-f="siteId"]'), 'S01');
     const opts2 = [...card().querySelector('[data-f="workId"]').options].map(o => o.textContent);
-    assert(opts2.includes('建方（上棟）') && !opts2.includes('土台調整'), '新築の一覧でない');
+    assert(opts2.includes('建方（上棟）') && !opts2.includes('柱タチ調整'), '新築の一覧でない');
   });
   await run('作業内容を選ぶと仕様・時間・数量（単位つき）が出る', () => {
     const card = d.querySelector('[data-i="0"]');
@@ -180,7 +180,6 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     d.getElementById('addLine').click();
     const c2 = () => d.querySelector('[data-i="1"]');
     assert(c2().querySelector('[data-f="siteId"]').value === 'S01', '前の現場が入らない');
-    setVal(w, c2().querySelector('[data-f="siteId"]'), 'S02');
     const prep = [...c2().querySelector('[data-f="workId"]').options].find(o => o.textContent === '準備').value;
     setVal(w, c2().querySelector('[data-f="workId"]'), prep);
     assert(!c2().querySelector('[data-f="qty"]'), '数量なしの作業に数量欄が出た');
