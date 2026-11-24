@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>現場工数</title>
+<style>
+:root{--bg:#f4f5f2;--card:#fff;--ink:#222;--sub:#666;--line:#d9dbd4;--acc:#2f6b4f;--acc2:#e7f0ea;--warn:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:16px}
+header{background:var(--acc);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{font-size:18px;margin:0}
+header .ver{font-size:12px;opacity:.8}
+header .who{margin-left:auto;font-size:14px}
+header .who button{margin-left:6px}
+nav{display:flex;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav button{flex:1;padding:12px 4px;border:0;background:none;font-size:15px;color:var(--sub);border-bottom:3px solid transparent;cursor:pointer}
+nav button.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:bold}
+main{max-width:900px;margin:0 auto;padding:16px}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 10px}
+label.f{display:block;margin:10px 0 4px;font-size:14px;color:var(--sub)}
+input,select,textarea{font:inherit;width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+textarea{min-height:140px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+button{font:inherit;cursor:pointer}
+.btn{padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:#fff}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.big{width:100%;padding:14px;font-size:17px;margin-top:14px}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn.del{color:var(--warn)}
+.note{font-size:13px;color:var(--sub);margin:6px 0}
+.msg{background:var(--acc2);border-radius:8px;padding:10px;margin-bottom:12px;font-size:14px}
+.msg:empty{display:none}
+.rec{border-top:1px solid var(--line);padding:10px 0;display:flex;gap:10px;align-items:flex-start}
+.rec:first-child{border-top:0}
+.rec .b{flex:1}
+.rec .t{font-weight:bold}
+.rec .s{font-size:13px;color:var(--sub)}
+.tag{display:inline-block;font-size:12px;padding:1px 6px;border-radius:10px;background:#eee;color:var(--sub);margin-left:4px}
+.tag.sent{background:var(--acc2);color:var(--acc)}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;white-space:nowrap}
+th{background:#f0f1ec;font-weight:normal;color:var(--sub)}
+td.n,th.n{text-align:right}
+tr.k{cursor:pointer}
+tr.k:hover{background:#fafaf7}
+tr.sub td{background:#fafaf7;font-size:13px}
+tr.sub input{width:90px;padding:4px 6px;text-align:right}
+.big-num{font-size:24px;font-weight:bold;color:var(--acc)}
+dialog{border:0;border-radius:12px;padding:18px;max-width:420px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+.pick{display:block;width:100%;text-align:left;margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>現場工数</h1><span class="ver" id="appVersion"></span>
+  <span class="who">入力者：<b id="whoName">未設定</b><button class="btn sm" onclick="openWho()">切替</button></span>
+</header>
+<nav>
+  <button data-tab="input" class="on" onclick="showTab('input')">入力</button>
+  <button data-tab="list" onclick="showTab('list')">記録</button>
+  <button data-tab="sum" onclick="showTab('sum')">集計</button>
+  <button data-tab="set" onclick="showTab('set')">設定</button>
+</nav>
+<main>
+  <div class="msg" id="msg"></div>
+
+  <section class="tab on" id="tab-input">
+    <div class="card">
+      <h2>作業の記録</h2>
+      <label class="f">日付</label><input type="date" id="inDate">
+      <label class="f">物件</label><select id="inProp"></select>
+      <label class="f">工種</label><select id="inKou"></select>
+      <div class="row">
+        <div><label class="f">人数</label><input type="number" id="inN" min="1" step="1" value="1" inputmode="numeric"></div>
+        <div><label class="f">1人あたりの時間</label><input type="number" id="inH" min="0" step="0.5" inputmode="decimal"></div>
+      </div>
+      <p class="note" id="inCalc"></p>
+      <label class="f">メモ（任意）</label><input type="text" id="inMemo" placeholder="例：2階の床、雨で午後中止">
+      <button class="btn pri big" onclick="addRecord()">記録する</button>
+    </div>
+    <div class="card"><h2>この日の記録</h2><div id="dayList"></div></div>
+  </section>
+
+  <section class="tab" id="tab-list">
+    <div class="card">
+      <h2>事務所へ送る</h2>
+      <p class="note" id="unsentInfo"></p>
+      <button class="btn pri big" onclick="sendRecords(false)">未送信の記録を送る</button>
+      <button class="btn" style="margin-top:8px" onclick="sendRecords(true)">すべての記録を送り直す</button>
+      <p class="note">送るとファイルができます。LINE・メールなどで事務所へ送ってください。</p>
+    </div>
+    <div class="card"><h2>この端末の記録</h2><div id="allList"></div></div>
+  </section>
+
+  <section class="tab" id="tab-sum">
+    <div class="card">
+      <h2>職人さんの記録を取り込む</h2>
+      <input type="file" id="impFile" accept=".json,application/json" multiple onchange="importFiles(this.files)">
+      <p class="note">送られてきたファイルを選びます（複数可）。同じ記録は二重に数えません。</p>
+    </div>
+    <div class="card">
+      <h2>工種ごとの人工</h2>
+      <p class="note">人工 ＝ 人数 × 時間 ÷ <span class="hpnTxt"></span>時間。行を押すと物件ごとの内訳と、施工数量の入力欄が出ます。<br>
+      数量あたりの人工は、数量を入れた物件だけで計算します。</p>
+      <div class="tblwrap"><table id="sumTbl"></table></div>
+      <button class="btn" style="margin-top:10px" onclick="exportCsv()">記録をCSVで書き出す</button>
+    </div>
+    <div class="card">
+      <h2>見積</h2>
+      <div class="row">
+        <div><label class="f">工種</label><select id="estKou" onchange="calcEst()"></select></div>
+        <div><label class="f">数量 <span id="estUnit"></span></label><input type="number" id="estQty" min="0" step="any" inputmode="decimal" oninput="calcEst()"></div>
+      </div>
+      <p class="note" id="estBasis"></p>
+      <div class="big-num" id="estOut">―</div>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-set">
+    <div class="card">
+      <h2>工種</h2>
+      <p class="note">1行に「工種名,単位」。単位は数量を数えるもの（㎡・m・か所 など）。</p>
+      <textarea id="setKou"></textarea>
+    </div>
+    <div class="card">
+      <h2>物件</h2>
+      <p class="note">1行に1物件。</p>
+      <textarea id="setProps" style="min-height:100px"></textarea>
+    </div>
+    <div class="card">
+      <h2>入力者</h2>
+      <p class="note">1行に1人。入力者の選択肢に出ます（一覧に無い名前も入力できます）。</p>
+      <textarea id="setWorkers" style="min-height:100px"></textarea>
+      <label class="f">1人工の時間</label><input type="number" id="setHpn" min="1" step="0.5">
+      <button class="btn pri big" onclick="saveSettings()">設定を保存</button>
+    </div>
+    <div class="card">
+      <h2>職人さんへ配る</h2>
+      <p class="note">今の工種・物件・入力者の一覧を入れたアプリのファイルを作ります。職人さんはこのファイルを開くだけで使えます。工種や物件を変えたら作り直して配ってください（記録は消えません）。</p>
+      <button class="btn pri" onclick="buildDistFile()">配布用ファイルを作る</button>
+    </div>
+    <div class="card">
+      <h2>バックアップ</h2>
+      <button class="btn" onclick="exportBackup()">すべて書き出す</button>
+      <label class="btn" style="display:inline-block">読み込む<input type="file" accept=".json" style="display:none" onchange="importBackup(this.files[0])"></label>
+      <p class="note">この端末のデータは、このブラウザの中にだけあります。ときどき書き出して保管してください。</p>
+    </div>
+  </section>
+</main>
+
+<dialog id="whoDlg">
+  <h2 style="margin-top:0;font-size:17px">入力するのは誰ですか？</h2>
+  <div id="whoPicks"></div>
+  <label class="f">一覧に無いときは名前を入力</label>
+  <div class="row"><input type="text" id="whoFree"><button class="btn pri" style="flex:0 0 auto" onclick="setWho(document.getElementById('whoFree').value)">決定</button></div>
+</dialog>
+
+<script>
+// 配布用ファイルを作るとき、下の1行が設定の JSON に置き換わる
+window.KOSU_SEED = null;/*SEED_END*/
+
+const APP_VERSION = '0.1.0';
+const APP_DATE = '2026-11-24';
+const KEY = 'genba_kosu';
+const WHO_KEY = 'genba_kosu_who';
+const PAGE_SRC = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+// 工種の一覧は仮（社内の一覧を受け取ったら差し替える）
+const DEFAULT_KOUSYU = [
+  ['土台敷き','m'],['建方','坪'],['屋根下地','㎡'],['床下地','㎡'],['断熱材','㎡'],
+  ['サッシ取付','か所'],['外壁下地','㎡'],['天井下地','㎡'],['壁下地','㎡'],['フローリング張り','㎡'],
+  ['階段','か所'],['造作家具','台'],['建具枠','か所'],['巾木・廻り縁','m'],['その他','式']
+].map(([name,unit])=>({name,unit}));
+
+let data = {kousyu: DEFAULT_KOUSYU, props: [], workers: [], hpn: 8, records: [], qty: {}, seedAt: ''};
+let who = '';
+let openKou = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const r2 = x => Math.round(x*100)/100;
+const ninku = r => (Number(r.n)||0) * (Number(r.h)||0) / (Number(data.hpn)||8);
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+
+function flash(t){ $('msg').textContent = t; if(t) window.scrollTo(0,0); }
+
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e){ flash('保存できませんでした：' + e.message); } }
+function load(){
+  try { const s = localStorage.getItem(KEY); if(s) data = Object.assign(data, JSON.parse(s)); } catch(e){}
+  try { who = localStorage.getItem(WHO_KEY) || ''; } catch(e){}
+  if(!data.qty) data.qty = {};
+  if(!Array.isArray(data.records)) data.records = [];
+}
+function applySeed(){
+  const s = window.KOSU_SEED;
+  if(!s || !s.at || data.seedAt === s.at) return;
+  if(Array.isArray(s.kousyu) && s.kousyu.length) data.kousyu = s.kousyu;
+  if(Array.isArray(s.props)) data.props = s.props;
+  if(Array.isArray(s.workers)) data.workers = s.workers;
+  if(s.hpn) data.hpn = s.hpn;
+  data.seedAt = s.at;
+  save();
+  flash('事務所の設定（工種・物件）を読み込みました。');
+}
+
+function showTab(t){
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + t));
+  if(t === 'list') renderAllList();
+  if(t === 'sum') renderSum();
+  if(t === 'set') renderSettings();
+}
+
+// ── 入力者 ──
+function openWho(){
+  const names = [...new Set([who, ...data.workers].filter(Boolean))];
+  $('whoPicks').innerHTML = names.map(n => `<button class="btn pick" data-n="${esc(n)}">${esc(n)}</button>`).join('') || '<p class="note">名前を入力してください。</p>';
+  $('whoPicks').querySelectorAll('button').forEach(b => b.onclick = () => setWho(b.dataset.n));
+  $('whoFree').value = '';
+  const dlg = $('whoDlg');
+  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+}
+function setWho(n){
+  n = String(n||'').trim();
+  if(!n) return;
+  who = n;
+  try { localStorage.setItem(WHO_KEY, who); } catch(e){}
+  const dlg = $('whoDlg');
+  if(dlg.close) dlg.close(); else dlg.removeAttribute('open');
+  renderHeader(); renderDay();
+}
+function renderHeader(){ $('whoName').textContent = who || '未設定'; $('appVersion').textContent = `v${APP_VERSION}（${APP_DATE}）`; }
+
+// ── 入力 ──
+function fillSelect(sel, items, keep){
+  const cur = keep ? sel.value : '';
+  sel.innerHTML = '<option value="">選んでください</option>' + items.map(v => `<option>${esc(v)}</option>`).join('');
+  if(cur && items.includes(cur)) sel.value = cur;
+}
+function renderInputForm(){
+  fillSelect($('inProp'), data.props, true);
+  fillSelect($('inKou'), data.kousyu.map(k => k.name), true);
+  if(!$('inDate').value) $('inDate').value = today();
+  if(!$('inH').value) $('inH').value = data.hpn;
+  updateCalc();
+}
+function updateCalc(){
+  const n = Number($('inN').value)||0, h = Number($('inH').value)||0;
+  $('inCalc').textContent = n && h ? `${n}人 × ${h}時間 ＝ ${r2(n*h/data.hpn)}人工` : '';
+}
+function addRecord(){
+  if(!who){ openWho(); return; }
+  const r = {id:newId(), d:$('inDate').value, w:who, p:$('inProp').value, k:$('inKou').value,
+             n:Number($('inN').value), h:Number($('inH').value), m:$('inMemo').value.trim(), at:new Date().toISOString(), sent:false};
+  const miss = [];
+  if(!r.d) miss.push('日付'); if(!r.p) miss.push('物件'); if(!r.k) miss.push('工種');
+  if(!(r.n > 0)) miss.push('人数'); if(!(r.h > 0)) miss.push('時間');
+  if(miss.length){ flash(miss.join('・') + 'を入れてください。'); return; }
+  data.records.push(r);
+  save();
+  $('inMemo').value = '';
+  flash(`記録しました：${r.k} ${r2(ninku(r))}人工`);
+  renderDay();
+}
+function recHtml(r, delBtn){
+  return `<div class="rec"><div class="b"><div class="t">${esc(r.k)}　${r.n}人×${r.h}時間（${r2(ninku(r))}人工）${r.sent?'<span class="tag sent">送信済</span>':'<span class="tag">未送信</span>'}</div>
+    <div class="s">${esc(r.d)}　${esc(r.p)}　${esc(r.w)}${r.m ? '　' + esc(r.m) : ''}</div></div>
+    ${delBtn ? `<button class="btn sm del" onclick="delRecord('${r.id}')">削除</button>` : ''}</div>`;
+}
+function renderDay(){
+  const d = $('inDate').value;
+  const rs = data.records.filter(r => r.d === d && r.w === who);
+  $('dayList').innerHTML = rs.length ? rs.map(r => recHtml(r, true)).join('') + `<p class="note">合計 ${r2(rs.reduce((a,r)=>a+ninku(r),0))}人工</p>` : '<p class="note">まだありません。</p>';
+}
+function delRecord(id){
+  const r = data.records.find(x => x.id === id);
+  if(!r) return;
+  if(!confirm(`${r.d} ${r.k} の記録を削除しますか？` + (r.sent ? '\n（送信済みです。事務所側の記録は残ります）' : ''))) return;
+  data.records = data.records.filter(x => x.id !== id);
+  save(); renderDay(); renderAllList();
+}
+
+// ── 記録・送信 ──
+function myRecords(){ return data.records.filter(r => r.w === who); }
+function renderAllList(){
+  const mine = myRecords().slice().sort((a,b) => (b.d+b.at).localeCompare(a.d+a.at));
+  const unsent = mine.filter(r => !r.sent).length;
+  $('unsentInfo').textContent = who ? `${who}さんの未送信の記録：${unsent}件` : '入力者を選んでください。';
+  $('allList').innerHTML = mine.length ? mine.map(r => recHtml(r, true)).join('') : '<p class="note">まだありません。</p>';
+}
+function downloadBlob(blob, name){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function sendRecords(all){
+  if(!who){ openWho(); return; }
+  const rs = myRecords().filter(r => all || !r.sent);
+  if(!rs.length){ flash('送る記録がありません。'); return; }
+  const payload = {type:'genba_kosu_records', appVersion:APP_VERSION, from:who, exportedAt:new Date().toISOString(),
+                   records: rs.map(({sent, ...r}) => r)};
+  const name = `工数_${who}_${today()}.json`;
+  const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+  let shared = false;
+  try {
+    const file = new File([blob], name, {type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); shared = true; }
+  } catch(e){ if(e && e.name === 'AbortError') return; }
+  if(!shared) downloadBlob(blob, name);
+  rs.forEach(r => r.sent = true);
+  save(); renderAllList(); renderDay();
+  flash(`${rs.length}件をファイル「${name}」にしました。` + (shared ? '' : '保存されたファイルを事務所へ送ってください。'));
+}
+
+// ── 取り込み・集計 ──
+function mergeRecords(list){
+  const ids = new Set(data.records.map(r => r.id));
+  let added = 0;
+  (list||[]).forEach(r => {
+    if(!r || !r.id || ids.has(r.id) || !r.k) return;
+    data.records.push({id:r.id, d:r.d, w:r.w, p:r.p, k:r.k, n:Number(r.n)||0, h:Number(r.h)||0, m:r.m||'', at:r.at||'', sent:true});
+    ids.add(r.id); added++;
+  });
+  return added;
+}
+async function importFiles(files){
+  let added = 0, bad = [];
+  for(const f of files){
+    try {
+      const j = JSON.parse(await f.text());
+      if(j.type !== 'genba_kosu_records') throw new Error('形式が違います');
+      added += mergeRecords(j.records);
+    } catch(e){ bad.push(f.name); }
+  }
+  save();
+  $('impFile').value = '';
+  flash(`${added}件を取り込みました。` + (bad.length ? `読めなかったファイル：${bad.join('、')}` : ''));
+  renderSum();
+}
+function getQty(p, k){ return Number((data.qty[p]||{})[k]) || 0; }
+function setQty(p, k, v){
+  if(!data.qty[p]) data.qty[p] = {};
+  const n = Number(v);
+  if(v === '' || !(n > 0)) delete data.qty[p][k]; else data.qty[p][k] = n;
+  save(); renderSum(); calcEst();
+}
+// 工種ごと：{k, unit, total, props:[{p, ninku, qty}], rate}
+function summarize(){
+  const by = {};
+  data.records.forEach(r => {
+    const k = by[r.k] || (by[r.k] = {});
+    k[r.p] = (k[r.p]||0) + ninku(r);
+  });
+  const names = [...data.kousyu.map(k => k.name), ...Object.keys(by).filter(n => !data.kousyu.some(k => k.name === n))];
+  return names.map(name => {
+    const unit = (data.kousyu.find(k => k.name === name)||{}).unit || '';
+    const props = Object.entries(by[name]||{}).map(([p, nk]) => ({p, ninku:nk, qty:getQty(p, name)}));
+    const withQ = props.filter(x => x.qty > 0);
+    const qn = withQ.reduce((a,x)=>a+x.ninku,0), qq = withQ.reduce((a,x)=>a+x.qty,0);
+    return {k:name, unit, total:props.reduce((a,x)=>a+x.ninku,0), props, rate: qq > 0 ? qn/qq : null, nQ:withQ.length};
+  });
+}
+function renderSum(){
+  document.querySelectorAll('.hpnTxt').forEach(e => e.textContent = data.hpn);
+  const rows = summarize();
+  let h = '<tr><th>工種</th><th>単位</th><th class="n">合計人工</th><th class="n">物件数</th><th class="n">数量あたりの人工</th></tr>';
+  rows.forEach(s => {
+    h += `<tr class="k" data-k="${esc(s.k)}"><td>${openKou===s.k?'▼':'▶'} ${esc(s.k)}</td><td>${esc(s.unit)}</td><td class="n">${s.total ? r2(s.total) : '―'}</td>
+      <td class="n">${s.props.length || '―'}</td><td class="n">${s.rate != null ? r2(s.rate) + '人工／' + esc(s.unit) + `（${s.nQ}物件）` : '―'}</td></tr>`;
+    if(openKou === s.k){
+      if(!s.props.length) h += '<tr class="sub"><td colspan="5">まだ記録がありません。</td></tr>';
+      s.props.forEach(x => {
+        h += `<tr class="sub"><td>　${esc(x.p)}</td><td></td><td class="n">${r2(x.ninku)}</td>
+          <td class="n" colspan="2">数量 <input type="number" min="0" step="any" value="${x.qty||''}" data-p="${esc(x.p)}" data-k="${esc(s.k)}"> ${esc(s.unit)}
+          ${x.qty ? '→ ' + r2(x.ninku/x.qty) + '人工／' + esc(s.unit) : ''}</td></tr>`;
+      });
+    }
+  });
+  $('sumTbl').innerHTML = h;
+  $('sumTbl').querySelectorAll('tr.k').forEach(tr => tr.onclick = () => { openKou = openKou === tr.dataset.k ? null : tr.dataset.k; renderSum(); });
+  $('sumTbl').querySelectorAll('tr.sub input').forEach(i => i.onchange = () => setQty(i.dataset.p, i.dataset.k, i.value));
+  const sel = $('estKou'), cur = sel.value;
+  sel.innerHTML = rows.map(s => `<option>${esc(s.k)}</option>`).join('');
+  if(cur) sel.value = cur;
+  calcEst();
+}
+function calcEst(){
+  const s = summarize().find(x => x.k === $('estKou').value);
+  $('estUnit').textContent = s && s.unit ? `（${s.unit}）` : '';
+  const q = Number($('estQty').value);
+  if(!s || s.rate == null){ $('estBasis').textContent = s ? 'この工種は、数量を入れた物件の実績がまだありません。' : ''; $('estOut').textContent = '―'; return; }
+  $('estBasis').textContent = `根拠：${s.nQ}物件の実績　${r2(s.rate)}人工／${s.unit}`;
+  $('estOut').textContent = q > 0 ? `${r2(q * s.rate)}人工` : '―';
+}
+function csvCell(v){ v = String(v==null?'':v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v; }
+function exportCsv(){
+  const head = ['日付','物件','工種','入力者','人数','時間','人工','メモ'];
+  const lines = [head, ...data.records.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).map(r => [r.d,r.p,r.k,r.w,r.n,r.h,r2(ninku(r)),r.m])];
+  downloadBlob(new Blob(['﻿' + lines.map(l => l.map(csvCell).join(',')).join('\r\n')], {type:'text/csv'}), `工数記録_${today()}.csv`);
+}
+
+// ── 設定 ──
+function renderSettings(){
+  $('setKou').value = data.kousyu.map(k => k.unit ? `${k.name},${k.unit}` : k.name).join('\n');
+  $('setProps').value = data.props.join('\n');
+  $('setWorkers').value = data.workers.join('\n');
+  $('setHpn').value = data.hpn;
+}
+const lines = t => [...new Set(t.split('\n').map(s => s.trim()).filter(Boolean))];
+function saveSettings(){
+  const kou = lines($('setKou').value).map(l => { const i = l.search(/[,、，]/); return i < 0 ? {name:l, unit:''} : {name:l.slice(0,i).trim(), unit:l.slice(i+1).trim()}; }).filter(k => k.name);
+  if(!kou.length){ flash('工種を1つ以上入れてください。'); return; }
+  const hpn = Number($('setHpn').value);
+  if(!(hpn > 0)){ flash('1人工の時間を入れてください。'); return; }
+  data.kousyu = kou; data.props = lines($('setProps').value); data.workers = lines($('setWorkers').value); data.hpn = hpn;
+  save(); renderInputForm(); renderSettings();
+  flash('設定を保存しました。');
+}
+function buildDistFile(){
+  const seed = {at:new Date().toISOString(), kousyu:data.kousyu, props:data.props, workers:data.workers, hpn:data.hpn};
+  const json = JSON.stringify(seed).replace(/</g, '\\u003c');
+  const src = PAGE_SRC.replace(/window\.KOSU_SEED = [^\n]*?;\/\*SEED_END\*\//, () => `window.KOSU_SEED = ${json};/*SEED_END*/`);
+  if(src === PAGE_SRC){ flash('配布用ファイルを作れませんでした。'); return; }
+  downloadBlob(new Blob([src], {type:'text/html'}), `genba_kosu_${today().replace(/-/g,'')}.html`);
+  flash('配布用ファイルを作りました。職人さんへ送ってください。');
+}
+function exportBackup(){
+  downloadBlob(new Blob([JSON.stringify({type:'genba_kosu_backup', appVersion:APP_VERSION, exportedAt:new Date().toISOString(), data})], {type:'application/json'}), `工数バックアップ_${today()}.json`);
+}
+async function importBackup(f){
+  if(!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if(j.type === 'genba_kosu_records'){ const n = mergeRecords(j.records); save(); flash(`${n}件を取り込みました。`); }
+    else if(j.type === 'genba_kosu_backup' && j.data){
+      if(!confirm('この端末のデータを、読み込むファイルの内容に置き換えますか？')) return;
+      data = Object.assign({kousyu:DEFAULT_KOUSYU, props:[], workers:[], hpn:8, records:[], qty:{}, seedAt:''}, j.data);
+      save(); flash('読み込みました。');
+    } else throw new Error();
+  } catch(e){ flash('読み込めませんでした（形式が違います）。'); return; }
+  renderInputForm(); renderSettings();
+}
+
+// ── 起動 ──
+load();
+applySeed();
+renderHeader();
+renderInputForm();
+$('inDate').onchange = renderDay;
+$('inN').oninput = updateCalc;
+$('inH').oninput = updateCalc;
+renderDay();
+if(!who) openWho();
+</script>
+</body>
+</html>
