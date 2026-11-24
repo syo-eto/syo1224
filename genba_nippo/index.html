@@ -71,13 +71,6 @@ button{font:inherit;cursor:pointer}
     </div>
     <div id="lines"></div>
     <button class="btn big" id="addLine" type="button">＋ 作業を追加</button>
-    <div id="matSection" class="hidden">
-      <div class="card" style="margin-top:14px">
-        <h2>使った材料</h2>
-        <div id="mats"></div>
-        <button class="btn" id="addMat" type="button" style="margin-top:8px">＋ 材料を追加</button>
-      </div>
-    </div>
     <div class="card" style="margin-top:14px">
       <p class="total">合計 <b id="totalHours">0</b> 時間</p>
       <button class="btn pri big" id="send" type="button">送信</button>
@@ -101,7 +94,7 @@ button{font:inherit;cursor:pointer}
   var WHO_KEY = 'daiku_nippo_who';
   var DRAFT_PREFIX = 'daiku_nippo_draft_';
   var MAX_HOURS = 12;
-  var OTHER = 'その他（入力）';
+  var MAT_OTHER = '__other__', MAT_NONE = '__none__';
 
   var master = null;
   var who = null;          // {workerId, pin}
@@ -127,8 +120,8 @@ button{font:inherit;cursor:pointer}
   function workById(id) { return master.works.filter(function (w) { return w.id === id; })[0]; }
   function workerById(id) { return master.workers.filter(function (w) { return w.id === id; })[0]; }
   function draftKey() { return DRAFT_PREFIX + who.workerId + '_' + state.date; }
-  function saveDraft() { if (who && state && !locked) store(draftKey(), { lines: state.lines, materials: state.materials }); }
-  function emptyLine(prev) { return { siteId: prev ? prev.siteId : (master.sites.length === 1 ? master.sites[0].id : ''), workId: '', spec: {}, hours: '', qty: '' }; }
+  function saveDraft() { if (who && state && !locked) store(draftKey(), { lines: state.lines }); }
+  function emptyLine(prev) { return { siteId: prev ? prev.siteId : (master.sites.length === 1 ? master.sites[0].id : ''), workId: '', hours: '', materialId: '', materialText: '', qty: '' }; }
 
   /* ── 入力者 ── */
   function startPick() {
@@ -171,12 +164,12 @@ button{font:inherit;cursor:pointer}
   }
 
   function openDate(date) {
-    state = { date: date, lines: [], materials: [] };
+    state = { date: date, lines: [] };
     locked = false;
     $('dateNote').textContent = '';
     var draft = load(DRAFT_PREFIX + who.workerId + '_' + date);
     if (draft && draft.lines && draft.lines.length) {
-      state.lines = draft.lines; state.materials = draft.materials || [];
+      state.lines = draft.lines;
       $('dateNote').textContent = '送る前の入力を戻しました。';
       render();
       return;
@@ -186,7 +179,6 @@ button{font:inherit;cursor:pointer}
     call('loadReport', [who.workerId, who.pin, date], function (r) {
       if (!r || !r.exists || state.date !== date) return;
       state.lines = r.lines.length ? r.lines : [emptyLine()];
-      state.materials = r.materials || [];
       locked = !r.editable;
       $('dateNote').textContent = locked ? 'この日の日報は送信済みです（直すときは管理者に連絡してください）。' : '送信済みの日報です。直して送り直せます。';
       render();
@@ -217,48 +209,26 @@ button{font:inherit;cursor:pointer}
       h += '<label class="f">作業内容</label><select data-f="workId"' + (site ? '' : ' disabled') + '>' +
         optionList(works.map(function (w) { return { value: w.id, label: w.name }; }), l.workId, site ? '選んでください' : '先に現場を選んでください') + '</select>';
       if (work) {
-        work.specs.forEach(function (s) {
-          var v = (l.spec || {})[s.name] || '';
-          h += '<label class="f">' + esc(s.name) + '</label>';
-          if (s.choices.length) {
-            var isOther = v && s.choices.indexOf(v) < 0;
-            h += '<select data-spec="' + esc(s.name) + '">' + optionList(s.choices.concat([OTHER]), isOther ? OTHER : v) + '</select>';
-            if (isOther || v === OTHER) h += '<input data-spec-other="' + esc(s.name) + '" placeholder="内容を入力" value="' + esc(v === OTHER ? '' : v) + '" style="margin-top:6px">';
-          } else {
-            h += '<input data-spec="' + esc(s.name) + '" value="' + esc(v) + '" placeholder="入力">';
-          }
-        });
         var hours = []; for (var k = 1; k <= MAX_HOURS; k++) hours.push({ value: String(k), label: k + ' 時間' });
-        h += '<div class="row"><div><label class="f">時間</label><select data-f="hours">' + optionList(hours, l.hours) + '</select></div>';
+        h += '<label class="f">時間</label><select data-f="hours">' + optionList(hours, l.hours) + '</select>';
         if (work.unit && work.unit !== '―') {
-          h += '<div><label class="f">今日の数量</label><div class="qty"><input data-f="qty" type="number" inputmode="decimal" min="0" step="any" value="' + esc(l.qty) + '"><span class="unit">' + esc(work.unit) + '</span></div></div>';
+          var mats = master.materials.filter(function (m) { return !m.works.length || m.works.indexOf(work.name) >= 0; })
+            .map(function (m) { return { value: m.id, label: m.name }; })
+            .concat([{ value: MAT_OTHER, label: 'その他（書く）' }, { value: MAT_NONE, label: 'なし' }]);
+          h += '<label class="f">材料</label><select data-f="materialId">' + optionList(mats, l.materialId) + '</select>';
+          if (l.materialId === MAT_OTHER) h += '<input data-f="materialText" placeholder="材料の名前（例：無垢オーク15mm）" value="' + esc(l.materialText) + '" style="margin-top:6px">';
+          h += '<label class="f">数量</label><div class="qty"><input data-f="qty" type="number" inputmode="decimal" min="0" step="any" value="' + esc(l.qty) + '"><span class="unit">' + esc(work.unit) + '</span></div>';
         }
-        h += '</div>';
       }
       return h + '</div>';
     }).join('');
     $('lines').innerHTML = html;
-    renderMats();
     $('totalHours').textContent = state.lines.reduce(function (a, l) { return a + (Number(l.hours) || 0); }, 0);
     if (locked) {
-      Array.prototype.forEach.call(document.querySelectorAll('#lines input, #lines select, #lines button, #mats input, #mats select, #mats button'), function (el) { el.disabled = true; });
+      Array.prototype.forEach.call(document.querySelectorAll('#lines input, #lines select, #lines button'), function (el) { el.disabled = true; });
     }
-    ['addLine', 'addMat', 'send'].forEach(function (id) { $(id).disabled = locked; });
+    ['addLine', 'send'].forEach(function (id) { $(id).disabled = locked; });
     $('send').textContent = locked ? '送信済み' : '送信';
-  }
-
-  function renderMats() {
-    $('matSection').classList.toggle('hidden', !master.materials.length);
-    if (!master.materials.length) return;
-    var usedSites = state.lines.map(function (l) { return l.siteId; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; });
-    $('mats').innerHTML = state.materials.map(function (m, i) {
-      var mat = master.materials.filter(function (x) { return x.id === m.materialId; })[0];
-      return '<div data-m="' + i + '" style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px">' +
-        '<div class="row"><div><select data-mf="siteId">' + optionList(usedSites.map(function (id) { var s = siteById(id); return { value: id, label: s ? s.name : id }; }), m.siteId, '現場') + '</select></div>' +
-        '<div><select data-mf="materialId">' + optionList(master.materials.map(function (x) { return { value: x.id, label: x.name + (x.spec ? ' ' + x.spec : '') }; }), m.materialId, '材料') + '</select></div></div>' +
-        '<div class="qty" style="margin-top:6px"><input data-mf="qty" type="number" inputmode="decimal" min="0" step="any" placeholder="数量" value="' + esc(m.qty) + '"><span class="unit">' + esc(mat ? mat.unit : '') + '</span>' +
-        '<button class="btn del" type="button" data-mact="del">削除</button></div></div>';
-    }).join('');
   }
 
   $('lines').addEventListener('change', function (e) { onLineInput(e, true); });
@@ -272,32 +242,20 @@ button{font:inherit;cursor:pointer}
     var el = e.target, card = el.closest('[data-i]');
     if (!card) return;
     var l = state.lines[Number(card.getAttribute('data-i'))];
-    var f = el.getAttribute('data-f'), sp = el.getAttribute('data-spec'), so = el.getAttribute('data-spec-other');
+    var f = el.getAttribute('data-f');
     if (f === 'siteId') {
       var oldKind = (siteById(l.siteId) || {}).kind;
       l.siteId = el.value;
-      if ((siteById(l.siteId) || {}).kind !== oldKind) { l.workId = ''; l.spec = {}; l.qty = ''; }
-    } else if (f === 'workId') { l.workId = el.value; l.spec = {}; l.qty = ''; }
+      if ((siteById(l.siteId) || {}).kind !== oldKind) { l.workId = ''; l.materialId = ''; l.materialText = ''; l.qty = ''; }
+    } else if (f === 'workId') { l.workId = el.value; l.materialId = ''; l.materialText = ''; l.qty = ''; }
     else if (f === 'hours') l.hours = el.value;
     else if (f === 'qty') l.qty = el.value;
-    else if (sp !== null) { l.spec = l.spec || {}; l.spec[sp] = el.value; }
-    else if (so !== null) { l.spec = l.spec || {}; l.spec[so] = el.value || OTHER; }
+    else if (f === 'materialId') l.materialId = el.value;
+    else if (f === 'materialText') l.materialText = el.value;
     saveDraft();
-    if (rerender && (f === 'siteId' || f === 'workId' || f === 'hours' || (sp !== null && el.tagName === 'SELECT'))) render();
+    if (rerender && (f === 'siteId' || f === 'workId' || f === 'hours' || f === 'materialId')) render();
   }
   $('addLine').onclick = function () { state.lines.push(emptyLine(state.lines[state.lines.length - 1])); saveDraft(); render(); };
-
-  $('mats').addEventListener('change', function (e) {
-    var row = e.target.closest('[data-m]'); if (!row) return;
-    var m = state.materials[Number(row.getAttribute('data-m'))], f = e.target.getAttribute('data-mf');
-    if (f) m[f] = e.target.value;
-    saveDraft(); if (f === 'materialId') renderMats();
-  });
-  $('mats').addEventListener('click', function (e) {
-    if (e.target.getAttribute('data-mact') !== 'del') return;
-    state.materials.splice(Number(e.target.closest('[data-m]').getAttribute('data-m')), 1); saveDraft(); renderMats();
-  });
-  $('addMat').onclick = function () { var s = state.lines[0] ? state.lines[0].siteId : ''; state.materials.push({ siteId: s, materialId: '', qty: '' }); saveDraft(); renderMats(); };
 
   /* ── 送信 ── */
   function checkBeforeSend() {
@@ -305,12 +263,12 @@ button{font:inherit;cursor:pointer}
       var l = state.lines[i], n = '作業' + (i + 1) + '：', w = workById(l.workId);
       if (!l.siteId) return n + '現場を選んでください。';
       if (!w) return n + '作業内容を選んでください。';
-      for (var j = 0; j < w.specs.length; j++) {
-        var v = (l.spec || {})[w.specs[j].name];
-        if (!v || v === OTHER) return n + '「' + w.specs[j].name + '」を選んでください。';
-      }
       if (!l.hours) return n + '時間を選んでください。';
-      if (w.unit && w.unit !== '―' && (l.qty === '' || l.qty === null || isNaN(Number(l.qty)))) return n + '今日の数量（' + w.unit + '）を入れてください。';
+      if (w.unit && w.unit !== '―') {
+        if (!l.materialId) return n + '材料を選んでください（使っていなければ「なし」）。';
+        if (l.materialId === MAT_OTHER && !String(l.materialText || '').trim()) return n + '材料の名前を書いてください。';
+      }
+      if (w.unit && w.unit !== '―' && (l.qty === '' || l.qty === null || isNaN(Number(l.qty)))) return n + '数量（' + w.unit + '）を入れてください。';
     }
     return '';
   }
@@ -323,8 +281,7 @@ button{font:inherit;cursor:pointer}
     $('send').disabled = true; $('send').textContent = '送信中…';
     var payload = {
       workerId: who.workerId, pin: who.pin, date: state.date,
-      lines: state.lines.map(function (l) { return { siteId: l.siteId, workId: l.workId, spec: l.spec, hours: Number(l.hours), qty: l.qty === '' ? '' : Number(l.qty) }; }),
-      materials: state.materials.filter(function (m) { return m.materialId; }).map(function (m) { return { siteId: m.siteId, materialId: m.materialId, qty: Number(m.qty) }; })
+      lines: state.lines.map(function (l) { return { siteId: l.siteId, workId: l.workId, hours: Number(l.hours), materialId: l.materialId || '', materialText: l.materialText || '', qty: l.qty === '' ? '' : Number(l.qty) }; })
     };
     call('submitReport', [payload], function (r) {
       store(draftKey(), null);
@@ -332,7 +289,7 @@ button{font:inherit;cursor:pointer}
       $('doneHead').textContent = r.date + '（' + (r.updated ? '直して送り直し' : '送信') + '）合計 ' + r.totalHours + ' 時間';
       $('receipt').innerHTML = r.lines.map(function (l) {
         return '<div><b>' + esc(l.work) + '</b> ' + l.hours + '時間' + (l.qty !== '' ? '・' + esc(l.qty) + esc(l.unit) : '') +
-          '<br><span class="note">' + esc(l.site) + (l.spec ? '／' + esc(l.spec) : '') + '</span></div>';
+          '<br><span class="note">' + esc(l.site) + (l.material ? '　材料：' + esc(l.material) : '') + '</span></div>';
       }).join('');
       show('doneView');
     }, function (t) { $('send').disabled = false; $('send').textContent = '送信'; flash('送れませんでした：' + t + '（入力はこの端末に残っています）', true); });

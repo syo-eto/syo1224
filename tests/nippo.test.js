@@ -33,13 +33,16 @@ function makeGas() {
     s.getDataRange = () => ({getValues: () => s.data.length ? s.data.map(r => r.slice()) : [['']]});
     s.getLastRow = () => s.data.length;
     s.getRange = (r, c, nr, nc) => ({
-      setValues: vals => { vals.forEach((row, i) => { const t = s.data[r - 1 + i] || (s.data[r - 1 + i] = []); row.forEach((v, j) => { t[c - 1 + j] = conv(v); }); }); },
+      setValues: vals => { if (c - 1 + vals[0].length > s.maxCols) throw new Error(name + ': 列が足りない（' + s.maxCols + '列）'); vals.forEach((row, i) => { const t = s.data[r - 1 + i] || (s.data[r - 1 + i] = []); row.forEach((v, j) => { t[c - 1 + j] = conv(v); }); }); },
       setFontWeight: () => {}
     });
-    s.appendRow = row => { s.data.push(row.map(conv)); };
+    s.appendRow = row => { if (row.length > s.maxCols) throw new Error(name + ': 列が足りない'); s.data.push(row.map(conv)); };
     s.deleteRow = i => { s.data.splice(i - 1, 1); };
     s.clearContents = () => { s.data = []; };
     s.setFrozenRows = () => {};
+    s.maxCols = 14;   // 表計算と同じく列の数に限りがある（足りなければ insertColumnsAfter で足す）
+    s.getMaxColumns = () => s.maxCols;
+    s.insertColumnsAfter = (after, n) => { s.maxCols += n; };
     return s;
   };
   const ss = {getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = makeSheet(n))};
@@ -96,23 +99,19 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
 
   await run('初期設定：シートと作業内容（新築24・リノベ30）を作る', () => {
     ctx.setup();
-    ['現場', '作業員', '作業内容', '仕様項目', '材料', '日報', '日報_作業', '日報_材料', '歩掛'].forEach(n => assert(sheets[n], n + ' が無い'));
+    ['現場', '作業員', '作業内容', '材料', '日報', '日報_作業', '歩掛'].forEach(n => assert(sheets[n], n + ' が無い'));
     const works = obj(sheets['作業内容']);
     assert(works.filter(w => w['種別（新築／リノベ）'] === '新築').length === 24, '新築 ' + works.length);
     assert(works.filter(w => w['種別（新築／リノベ）'] === 'リノベ').length === 30, 'リノベ');
     ctx.setup();
     assert(obj(sheets['作業内容']).length === 54, '2回目で増えた');
   });
-  await run('仕様の読み取り（括弧の中の「／」、括弧なしの「既製／造作」、選択肢なし）', () => {
-    const p = ctx.parseSpecDef_('無垢／複合・材種（オーク／パイン／スギ など）・厚み');
-    assert(JSON.stringify(p) === JSON.stringify([{name: '無垢／複合', choices: ['無垢', '複合']}, {name: '材種', choices: ['オーク', 'パイン', 'スギ']}, {name: '厚み', choices: []}]), JSON.stringify(p));
-    const floor = obj(sheets['仕様項目']).filter(s => s['作業ID'] === 'N11');
-    assert(floor.length === 6, '床張りの項目 ' + floor.length);
-  });
-
   // 管理者が登録する
   sheets['作業員'].data.push(['W01', '山田 太郎', 'TRUE', '', 2500], ['W02', '佐藤 次郎', 'TRUE', '1234', 2800], ['W03', '退職 者', 'FALSE', '', 2000]);
   sheets['現場'].data.push(['S01', '甲様邸', '新築', '進行中', ''], ['S02', '乙様邸', 'リノベ', '進行中', ''], ['S03', '丙様邸', '新築', '完工', '']);
+  sheets['材料'].data.push(['M01', '無垢オーク', '15mm', 'ケース', 9800, '2026-11-01', 'TRUE', '床張り（フローリング）、フロア張り'],
+                          ['M02', 'フロア釘', '38mm', '箱', 1200, '2026-11-01', 'TRUE', ''],
+                          ['M03', '使わない材料', '', '個', 10, '', 'FALSE', '']);
 
   await run('入力画面の一覧：進行中の現場だけ・有効な人だけ・時給と暗証番号は出さない', () => {
     const m = ctx.getMaster();
@@ -120,6 +119,8 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     assert(m.workers.map(w => w.id).join() === 'W01,W02', 'workers');
     const json = JSON.stringify(m);
     assert(!json.includes('2500') && !json.includes('2800') && !json.includes('1234'), '時給か暗証番号が入っている');
+    assert(!json.includes('9800') && !json.includes('1200'), '単価が入っている');
+    assert(m.materials.map(x => x.name).join() === '無垢オーク 15mm,フロア釘 38mm', '材料 ' + m.materials.map(x => x.name));
     assert(m.workers[1].hasPin === true && m.workers[0].hasPin === false, 'hasPin');
     assert(m.works.length === 54, 'works');
   });
@@ -159,37 +160,42 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     const opts2 = [...card().querySelector('[data-f="workId"]').options].map(o => o.textContent);
     assert(opts2.includes('建方（上棟）') && !opts2.includes('柱タチ調整'), '新築の一覧でない');
   });
-  await run('作業内容を選ぶと仕様・時間・数量（単位つき）が出る', () => {
+  await run('作業内容を選ぶと時間・材料・数量（単位つき）が出る。材料はその作業で使うものだけ', () => {
     const card = d.querySelector('[data-i="0"]');
-    setVal(w, card.querySelector('[data-f="workId"]'), 'N11');
+    setVal(w, card.querySelector('[data-f="workId"]'), 'N03');
+    let opts = [...d.querySelector('[data-i="0"] [data-f="materialId"]').options].map(o => o.textContent);
+    assert(opts.join() === '選んでください,フロア釘 38mm,その他（書く）,なし', '間柱の材料 ' + opts);
+    setVal(w, d.querySelector('[data-i="0"] [data-f="workId"]'), 'N11');
     const c = d.querySelector('[data-i="0"]');
-    assert(c.querySelectorAll('[data-spec]').length === 6, '仕様の欄 ' + c.querySelectorAll('[data-spec]').length);
+    opts = [...c.querySelector('[data-f="materialId"]').options].map(o => o.textContent);
+    assert(opts.includes('無垢オーク 15mm') && opts.includes('フロア釘 38mm'), '床張りの材料 ' + opts);
+    assert(!c.querySelector('[data-spec]'), '仕様の欄が残っている');
     assert(c.querySelector('.unit').textContent === 'ケース', '単位');
     assert(c.querySelector('[data-f="hours"]').options.length === 13, '時間の選択肢（1〜12）');
   });
   await run('入力が足りないと送らない', () => {
     d.getElementById('send').click();
-    assert(d.getElementById('msg').textContent.includes('無垢／複合'), d.getElementById('msg').textContent);
+    assert(d.getElementById('msg').textContent.includes('時間を選んでください'), d.getElementById('msg').textContent);
+    setVal(w, d.querySelector('[data-i="0"] [data-f="hours"]'), '4');
+    d.getElementById('send').click();
+    assert(d.getElementById('msg').textContent.includes('材料を選んでください'), d.getElementById('msg').textContent);
   });
-  await run('「その他（入力）」を選ぶと自由に書ける', () => {
+  await run('材料の「その他（書く）」を選ぶと自由に書ける', () => {
     const c = () => d.querySelector('[data-i="0"]');
-    setVal(w, c().querySelector('[data-spec="材種"]'), 'その他（入力）');
-    const other = c().querySelector('[data-spec-other="材種"]');
+    setVal(w, c().querySelector('[data-f="materialId"]'), '__other__');
+    const other = c().querySelector('[data-f="materialText"]');
     assert(other, '入力欄が出ない');
-    setVal(w, other, 'ウォールナット', 'input');
+    setVal(w, other, 'ウォールナット15mm', 'input');
   });
-  await run('1件目を埋めて、2件目（別の現場・数量なしの作業）を足す', () => {
+  await run('1件目を埋めて、2件目（数量なしの作業）を足す', () => {
     const c = () => d.querySelector('[data-i="0"]');
-    const pick = {'無垢／複合': '無垢', '厚み': '15mm', '幅': '90mm', '張り方': '捨て張り', '床暖房': 'なし'};
-    Object.entries(pick).forEach(([k, v]) => setVal(w, c().querySelector(`select[data-spec="${k}"]`), v));
-    setVal(w, c().querySelector('[data-f="hours"]'), '4');
     setVal(w, c().querySelector('[data-f="qty"]'), '18', 'input');
     d.getElementById('addLine').click();
     const c2 = () => d.querySelector('[data-i="1"]');
     assert(c2().querySelector('[data-f="siteId"]').value === 'S01', '前の現場が入らない');
     const prep = [...c2().querySelector('[data-f="workId"]').options].find(o => o.textContent === '準備').value;
     setVal(w, c2().querySelector('[data-f="workId"]'), prep);
-    assert(!c2().querySelector('[data-f="qty"]'), '数量なしの作業に数量欄が出た');
+    assert(!c2().querySelector('[data-f="qty"]') && !c2().querySelector('[data-f="materialId"]'), '数量なしの作業に材料・数量欄が出た');
     setVal(w, c2().querySelector('[data-f="hours"]'), '2');
     assert(d.getElementById('totalHours').textContent === '6', '合計 ' + d.getElementById('totalHours').textContent);
   });
@@ -208,25 +214,29 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     assert(d.getElementById('receipt').textContent.includes('床張り（フローリング）'), '控え');
     const lines = obj(sheets['日報_作業']);
     assert(lines.length === 2, '行数 ' + lines.length);
-    assert(lines[0]['仕様'] === '無垢／複合：無垢、材種：ウォールナット、厚み：15mm、幅：90mm、張り方：捨て張り、床暖房：なし', lines[0]['仕様']);
+    assert(lines[0]['材料'] === 'ウォールナット15mm' && lines[0]['材料ID'] === '', lines[0]['材料'] + '/' + lines[0]['材料ID']);
     assert(lines[1]['数量'] === '', '数量なしの行');
     const sum = obj(sheets['歩掛']);
-    const all = sum.find(r => r['作業内容'] === '床張り（フローリング）' && r['仕様'] === '（仕様をまとめた全体）');
+    const all = sum.find(r => r['作業内容'] === '床張り（フローリング）' && r['材料'] === '（材料をまとめた全体）');
     assert(all && all['合計時間'] === 4 && all['合計数量'] === 18 && Math.abs(all['時間／数量'] - 0.222) < 1e-9, JSON.stringify(all));
-    assert(sum.some(r => r['仕様'] === lines[0]['仕様']), '仕様ごとの行が無い');
+    assert(sum.some(r => r['材料'] === 'ウォールナット15mm'), '材料ごとの行が無い');
     assert(!w.localStorage.getItem('daiku_nippo_draft_W01_' + TODAY), '下書きが消えない');
   });
   await run('同じ日のうちは開き直すと送信済みの内容が出て、直して送り直せる', async () => {
     d.getElementById('again').click(); await tick(); await tick();
     assert(d.getElementById('dateNote').textContent.includes('直して送り直せます'), d.getElementById('dateNote').textContent);
     assert(d.querySelectorAll('[data-i]').length === 2, '2件出ない');
+    assert(d.querySelector('[data-i="0"] [data-f="materialText"]').value === 'ウォールナット15mm', '書いた材料が戻らない');
     setVal(w, d.querySelector('[data-i="0"] [data-f="hours"]'), '5');
+    setVal(w, d.querySelector('[data-i="0"] [data-f="materialId"]'), 'M01');
     d.querySelector('[data-i="1"] [data-act="del"]').click();
     d.getElementById('send').click(); await tick(); await tick();
     assert(d.getElementById('doneHead').textContent.includes('直して送り直し'), d.getElementById('doneHead').textContent + ' / ' + d.getElementById('msg').textContent);
     assert(obj(sheets['日報']).length === 1, '日報が増えた');
     assert(obj(sheets['日報_作業']).length === 1, '古い行が残った');
     assert(obj(sheets['日報'])[0]['合計時間'] === 5, '合計');
+    const l0 = obj(sheets['日報_作業'])[0];
+    assert(l0['材料'] === '無垢オーク 15mm' && l0['材料ID'] === 'M01', l0['材料'] + '/' + l0['材料ID']);
   });
   await run('別の日に送った日報は直せない（画面も送信できない）', async () => {
     const rep = sheets['日報'].data[1];
@@ -236,11 +246,11 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     const w3 = openPage(gas, {daiku_nippo_who: JSON.stringify({workerId: 'W01', pin: ''})}); await tick(); await tick(); await tick();
     assert(w3.document.getElementById('send').disabled, '送信ボタンが押せる');
     assert(w3.document.getElementById('dateNote').textContent.includes('送信済み'), 'お知らせ');
-    let msg = ''; try { ctx.submitReport({workerId: 'W01', pin: '', date: TODAY, lines: [{siteId: 'S01', workId: 'N22', spec: {}, hours: 1, qty: ''}]}); } catch (e) { msg = e.message; }
+    let msg = ''; try { ctx.submitReport({workerId: 'W01', pin: '', date: TODAY, lines: [{siteId: 'S01', workId: 'N22', hours: 1, qty: ''}]}); } catch (e) { msg = e.message; }
     assert(msg.includes('送信済み'), '上書きできてしまう: ' + msg);
   });
   await run('前日の分もあとから送れる', () => {
-    const r = ctx.submitReport({workerId: 'W02', pin: '1234', date: YESTERDAY, lines: [{siteId: 'S01', workId: 'N03', spec: {'断面': '27×105'}, hours: 8, qty: 40}]});
+    const r = ctx.submitReport({workerId: 'W02', pin: '1234', date: YESTERDAY, lines: [{siteId: 'S01', workId: 'N03', materialId: 'M02', hours: 8, qty: 40}]});
     assert(r.ok && r.date === YESTERDAY, JSON.stringify(r));
   });
   await run('サーバー側でも入力を確かめる', () => {
@@ -252,30 +262,14 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     bad({...base, lines: [{siteId: 'S02', workId: 'N22', hours: 1}]}, 'リノベの作業ではありません');
     bad({...base, lines: [{siteId: 'S03', workId: 'N22', hours: 1}]}, '現場を選んでください');
     bad({...base, lines: [{siteId: 'S01', workId: 'N22', hours: 1.5}]}, '1時間刻み');
-    bad({...base, lines: [{siteId: 'S01', workId: 'N03', spec: {'断面': '27×105'}, hours: 2, qty: ''}]}, '数量（本）');
-    bad({...base, lines: [{siteId: 'S01', workId: 'N03', spec: {}, hours: 2, qty: 3}]}, '「断面」を選んでください');
+    bad({...base, lines: [{siteId: 'S01', workId: 'N03', materialId: 'M02', hours: 2, qty: ''}]}, '数量（本）');
+    bad({...base, lines: [{siteId: 'S01', workId: 'N03', hours: 2, qty: 3}]}, '材料を選んでください');
+    bad({...base, lines: [{siteId: 'S01', workId: 'N03', materialId: '__other__', materialText: ' ', hours: 2, qty: 3}]}, '材料を書いてください');
+    bad({...base, lines: [{siteId: 'S01', workId: 'N03', materialId: 'M03', hours: 2, qty: 3}]}, '材料を選び直して');
+    const ok = ctx.submitReport({...base, date: YESTERDAY, lines: [{siteId: 'S01', workId: 'N03', materialId: '__none__', hours: 1, qty: 2}]});
+    assert(ok.ok && ok.lines[0].material === 'なし', '材料なし');
     bad({...base, lines: [{siteId: 'S01', workId: 'N22', hours: 13}, {siteId: 'S01', workId: 'N23', hours: 12}]}, '24時間を超えて');
   });
-  await run('材料が登録されると材料の欄が出て、日報_材料にたまる', async () => {
-    sheets['材料'].data.push(['M01', 'フロア釘', '38mm', '箱', 1200, '2026-11-01', 'TRUE']);
-    assert(!JSON.stringify(ctx.getMaster()).includes('1200'), '単価が入力画面に渡る');
-    const w4 = openPage(gas, {daiku_nippo_who: JSON.stringify({workerId: 'W02', pin: '1234'})}); await tick(); await tick();
-    const d4 = w4.document;
-    assert(!d4.getElementById('matSection').classList.contains('hidden'), '材料の欄が出ない');
-    const c = () => d4.querySelector('[data-i="0"]');
-    setVal(w4, c().querySelector('[data-f="siteId"]'), 'S01');
-    setVal(w4, c().querySelector('[data-f="workId"]'), 'N22');
-    setVal(w4, c().querySelector('[data-f="hours"]'), '1');
-    d4.getElementById('addMat').click();
-    const m = () => d4.querySelector('[data-m="0"]');
-    setVal(w4, m().querySelector('[data-mf="materialId"]'), 'M01');
-    setVal(w4, m().querySelector('[data-mf="qty"]'), '2');
-    d4.getElementById('send').click(); await tick(); await tick();
-    assert(!d4.getElementById('doneView').classList.contains('hidden'), d4.getElementById('msg').textContent);
-    const mats = obj(sheets['日報_材料']);
-    assert(mats.length === 1 && mats[0]['材料名'] === 'フロア釘' && mats[0]['数量'] === 2, JSON.stringify(mats));
-  });
-
   console.log(errors.length ? '\n' + errors.join('\n') + `\n❌ ${errors.length}件の失敗` : '\nすべて成功');
   process.exitCode = errors.length ? 1 : 0;
 })();
