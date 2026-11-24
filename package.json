@@ -7,7 +7,9 @@
     "test": "node tests/smoke.test.js",
     "check": "node tests/check-syntax.js",
     "test:kosu": "node tests/kosu.test.js",
-    "check:kosu": "node tests/check-syntax.js genba_kosu.html"
+    "check:kosu": "node tests/check-syntax.js genba_kosu.html",
+    "test:nippo": "node tests/nippo.test.js",
+    "check:nippo": "node --check genba_nippo/Code.gs 2>/dev/null || (cp genba_nippo/Code.gs /tmp/_c.js && node --check /tmp/_c.js) && node tests/check-syntax.js genba_nippo/index.html"
   },
   "devDependencies": {
     "jsdom": "^30.1.3"
