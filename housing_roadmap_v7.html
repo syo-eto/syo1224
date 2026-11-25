@@ -133,7 +133,12 @@ table.main tr:last-child td{border-bottom:none}
 table.main tr:hover td{background:var(--color-background-secondary,#f5f5f5)}
 .plan-in{font-size:12px;height:28px;padding:2px 4px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:6px;width:122px;background:#fff;color:inherit;font-family:inherit}
 .plan-in.plan-empty{background:#EAF6EE;border-color:#b7e1cd}
-.tname-txt.over{color:#A32D2D;font-weight:500}
+.tname-txt.over{color:#D32F2F;font-weight:700}
+.tname-txt.over::before{content:"⚠️ "}
+/* 期日超過の行：薄い赤の背景と左の赤い線（ロードマップ・個人ダッシュボード） */
+.rm-row-over td,.mt-row-over td{background:#FDECEC}
+.rm-row-over td:first-child,.mt-row-over td:first-child{box-shadow:inset 4px 0 0 #D32F2F}
+.due-over{font-weight:700!important}
 .done-row .tlink .tname-txt{text-decoration:line-through;color:var(--color-text-tertiary,#aaa)}
 /* 完了したボックスは行全体に横線を引いてグレーにする（ロードマップ・担当ボックス。スマホのカードも同じ） */
 .done-row td,.done-row td *{color:var(--color-text-tertiary,#aaa)!important;text-decoration:line-through}
@@ -317,7 +322,6 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 .mt-open{font-size:12px;padding:5px 12px;border-radius:7px;border:.5px solid var(--color-border-secondary,#d0d0d0);background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);cursor:pointer;white-space:nowrap}
 .mt-prop-body{padding:10px 12px 12px}
 .mt-none{font-size:13px;color:var(--color-text-tertiary,#999);padding:.5rem .25rem}
-.mt-row-over td{background:#FDF3F3}
 /* ===== 画面幅ごとの表示（スマートフォン：〜600px／タブレット：601〜1024px／PC：1025px〜） ===== */
 .prop-cards{display:none}
 @media (max-width:600px){
@@ -360,6 +364,9 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   .rc-tbl .rc-plan-start::before{content:"開始予定 "}
   .rc-tbl .rc-plan-end::before{content:"完了予定 "}
   .rc-tbl .rc-kb,.rc-tbl .rc-none{display:none!important}
+  /* 期日超過：スマホはカード全体を薄い赤にして左に赤い線 */
+  table.rc-tbl tr.rm-row-over,table.rc-tbl tr.mt-row-over{background:#FDECEC!important;box-shadow:inset 5px 0 0 #D32F2F}
+  table.rc-tbl tr.rm-row-over td:first-child,table.rc-tbl tr.mt-row-over td:first-child{box-shadow:none}
   table.rc-tbl .badge{font-size:11px}
   /* 管理者設定のボックス一覧：1ボックス1枚のカードに（編集・削除は右上） */
   table.te-tbl thead{display:none}
@@ -520,7 +527,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.6.0（2026-11-25）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.6.1（2026-11-25）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1531,7 +1538,7 @@ function render(){
     const allFuyo=st==='完了'&&isBoxFuyo(curPid,t.no);
     const tanto=(['会議','打合せ'].includes(t.category))?'―':((tantoMap[curPid]&&tantoMap[curPid][t.category])||t.tanto||'―');
     const dueTxt=fmtDue(getEffectiveDue(t.no));
-    return '<tr class="'+(st==='完了'?'done-row':'')+'">'
+    return '<tr class="'+(st==='完了'?'done-row':(isBoxOverdue(curPid,t.no)?'rm-row-over':''))+'">'
       +'<td class="no-col rc-no">'+t.no+'</td>'
       +'<td class="rc-name"><span class="tlink" onclick="openModal('+t.no+')">'
       +'<span class="tlink-top">'+(hasHelp?'<span class="help-dot"></span>':'')+'<span class="tname-txt'+(isBoxOverdue(curPid,t.no)?' over':'')+'">'+t.name+'</span>'+(prog?'<span class="cnt">'+prog.doneN+'/'+prog.activeTotal+'</span>':'')+'</span>'
@@ -2406,7 +2413,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.6.0';
+const APP_VERSION = '0.6.1';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う

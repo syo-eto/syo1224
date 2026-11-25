@@ -592,6 +592,8 @@ run('期日超過のボックスはボックス名を赤で表示する（0.5.3�
   wv.openProp(pid); wv.render();
   const nameOf = no => [...dv.querySelectorAll('#tbody tr')].find(tr=>tr.querySelector('.rc-no').textContent===String(no)).querySelector('.tname-txt');
   if(!nameOf(12).classList.contains('over')) throw new Error('期日を過ぎた未完了のボックスが赤でない');
+  const rowOf = no => nameOf(no).closest('tr');
+  if(!rowOf(12).classList.contains('rm-row-over') || rowOf(13).classList.contains('rm-row-over') || rowOf(14).classList.contains('rm-row-over')) throw new Error('期日超過の行の印');
   if(nameOf(13).classList.contains('over')) throw new Error('完了のボックスが赤');
   if(nameOf(14).classList.contains('over') || nameOf(15).classList.contains('over')) throw new Error('期日前・期日なしのボックスが赤');
   if(wv.overdueCount(pid)!==1) throw new Error('期日超過の件数 '+wv.overdueCount(pid));
