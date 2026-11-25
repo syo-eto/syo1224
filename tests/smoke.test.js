@@ -510,6 +510,15 @@ run('ホームのタブは左が個人ダッシュボード、右が全体ダッ
   if(!wv.document.getElementById('homePanel-me').classList.contains('on') || wv.document.getElementById('homePanel-all').classList.contains('on')) throw new Error('起動時に個人ダッシュボードが開かない');
   if(!wv.document.getElementById('homeTab-me').classList.contains('on')) throw new Error('個人ダッシュボードのタブが選ばれていない');
 });
+run('打合せ9ボックスのフェーズ変更：編集済みの保存データにも反映（0.5.7）', () => {
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS))').map(t=>t.no>=120&&t.no<=128?Object.assign({}, t, {group:'着工前工務業務'}):t);
+  tasks.find(t=>t.no===128).name = '自分で名前を変えた左官';
+  const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify({boxNoVer:10, props:[], nextPid:1, pStates:{}, tasks})); }}).window;
+  const T = wv.eval('TASKS');
+  if(T.find(t=>t.no===120).group!=='着工後' || T.find(t=>t.no===127).group!=='着工後') throw new Error('編集済みの一覧の打合せが着工後にならない');
+  if(T.find(t=>t.no===128).group!=='着工前工務業務') throw new Error('名前を変えたボックスまで変えてしまった');
+});
 run('期日超過のボックスはボックス名を赤で表示する（0.5.3）', () => {
   const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7_user', JSON.stringify('江藤　奨')); }}).window;
@@ -797,6 +806,7 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   if(box(185).name!=='地盤改良発注' || box(185).group!=='完成宅地' || box(185).category!=='現場監督' || box(185).items.length!==2 || !box(185).items[0].t.startsWith('地盤改良工事発注')) throw new Error('11/24：185 地盤改良発注');
   if(box(61).items.some(i=>i.t.includes('入念な転圧'))) throw new Error('11/24：61に62と重複のタスクが残っている');
   if(box(102).group!=='着工後') throw new Error('11/24（2回目）：102 BELS申請のフェーズ');
+  if([120,121,122,123,124,125,126,127,128].some(no=>box(no).group!=='着工後') || box(119).group!=='着工前工務業務' || box(129).group!=='着工前工務業務') throw new Error('11/24（夕方）：打合せ9ボックスのフェーズ');
   if(box(62).category!=='企画' || w3.eval('TASK_GATE_MAP[62].days')!==73 || w3.eval('TASK_GATE_MAP[185].days')!==66) throw new Error('11/24：62・185 の担当・所要日程');
   if(box(18).items.length!==40 || box(38).items.length!==147 || box(56).items.length!==2 || box(83).items.length!==30 || box(85).items.length!==130 || box(115).items.length!==11 || box(132).items.length!==5 || box(133).items.length!==12) throw new Error('11/24 のテンプレートのタスク数');
   if(box(176).name!=='引渡' || box(176).items.length!==1 || box(176).items[0].t!=='お花の受け取り') throw new Error('176 引渡の中身');
