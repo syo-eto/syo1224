@@ -132,6 +132,8 @@ table.main td{padding:9px 10px;border-bottom:.5px solid var(--color-border-terti
 table.main tr:last-child td{border-bottom:none}
 table.main tr:hover td{background:var(--color-background-secondary,#f5f5f5)}
 .plan-in{font-size:12px;height:28px;padding:2px 4px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:6px;width:122px;background:#fff;color:inherit;font-family:inherit}
+.plan-warn{display:none;font-size:10px;margin-right:3px;vertical-align:middle}
+.plan-missing .plan-warn{display:inline}
 .plan-in.plan-empty{background:#EAF6EE;border-color:#b7e1cd}
 .tname-txt.over{color:#D32F2F;font-weight:700}
 .tname-txt.over::before{content:"⚠️ "}
@@ -527,7 +529,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.6.1（2026-11-25）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.6.2（2026-11-25）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1436,9 +1438,12 @@ function planCell(pid,t,kind){
   const v=planOf(pid,t.no,kind), cls='rc-plan rc-plan-'+kind;
   const done=pStates[pid]&&pStates[pid].ts&&pStates[pid].ts[t.no]==='完了';
   // 完了したボックスは表示だけ（予定の入力・未入力の印は、完了していないボックスだけ）
+  // 未入力（完了していないボックス）は、ボックス名と同じ⚠️を小さく付ける
+  const warn='<span class="plan-warn" title="未入力">⚠️</span>';
+  const miss=!done&&!v;
   if(!done && canEditPlan(pid,t))
-    return '<td class="'+cls+'"><input type="date" class="plan-in'+(v?'':' plan-empty')+'" value="'+v+'" title="'+(kind==='start'?'開始予定':'完了予定')+'" onclick="event.stopPropagation()" onchange="setPlan('+pid+','+t.no+',\''+kind+'\',this)"></td>';
-  return '<td class="'+cls+(v?'':' rc-none')+'" style="font-size:13px;color:var(--color-text-secondary,#666);white-space:nowrap">'+(v?v.slice(5).replace('-','/'):'―')+'</td>';
+    return '<td class="'+cls+(miss?' plan-missing':'')+'" style="white-space:nowrap">'+warn+'<input type="date" class="plan-in'+(v?'':' plan-empty')+'" value="'+v+'" title="'+(kind==='start'?'開始予定':'完了予定')+'" onclick="event.stopPropagation()" onchange="setPlan('+pid+','+t.no+',\''+kind+'\',this)"></td>';
+  return '<td class="'+cls+(v?'':' rc-none')+(miss?' plan-missing':'')+'" style="font-size:13px;color:var(--color-text-secondary,#666);white-space:nowrap">'+(miss?warn:'')+(v?v.slice(5).replace('-','/'):'―')+'</td>';
 }
 function setPlan(pid,no,kind,el){
   const t=TASKS.find(x=>x.no===no);
@@ -1450,6 +1455,7 @@ function setPlan(pid,no,kind,el){
   const m=kind==='start'?st.planStart:st.planEnd;
   if(v) m[no]=v; else delete m[no];
   el.classList.toggle('plan-empty',!v);
+  const td=el.closest&&el.closest('td'); if(td) td.classList.toggle('plan-missing',!v);
   scheduleSave();
 }
 function fmtDue(due){
@@ -2413,7 +2419,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.6.1';
+const APP_VERSION = '0.6.2';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う

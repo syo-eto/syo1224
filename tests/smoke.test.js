@@ -542,6 +542,11 @@ run('開始予定・完了予定：担当者だけが入力でき、保存・取
   if(wv.eval('pStates['+pid+'].planEnd['+kikaku+']')) throw new Error('開始より前の完了予定が入った');
   inE.value='2026-12-05'; inE.dispatchEvent(new wv.Event('change'));
   if(wv.eval('pStates['+pid+'].planStart['+kikaku+']')!=='2026-12-01' || wv.eval('pStates['+pid+'].planEnd['+kikaku+']')!=='2026-12-05') throw new Error('予定が入らない');
+  // 未入力の印（⚠️）：入力すると消え、未入力の欄には付く。完了したボックスには付かない
+  if(row(kikaku).querySelector('.rc-plan-start').classList.contains('plan-missing')) throw new Error('入力したのに未入力の印が残る');
+  if(!row(sakuzu).querySelector('.rc-plan-start').classList.contains('plan-missing') || !row(sakuzu).querySelector('.rc-plan-start .plan-warn')) throw new Error('未入力の欄に印が無い（担当でない人の表示）');
+  const kk3 = wv.eval('TASKS.filter(t=>t.category==="企画")[2].no');
+  if(!row(kk3).querySelector('.rc-plan-end').classList.contains('plan-missing')) throw new Error('未入力の入力欄に印が無い');
   // 担当でない人は setPlan でも入らない
   const fake = {value:'2026-12-01', classList:{toggle(){}}};
   wv.setPlan(pid, sakuzu, 'start', fake);
@@ -551,6 +556,7 @@ run('開始予定・完了予定：担当者だけが入力でき、保存・取
   const kikaku2 = wv.eval('TASKS.filter(t=>t.category==="企画")[1].no');
   wv.eval('pStates['+pid+'].ts['+kikaku2+']="完了"'); wv.render();
   if(row(kikaku2).querySelector('.rc-plan input')) throw new Error('完了したボックスに入力欄が出る');
+  if(row(kikaku2).querySelector('.plan-missing')) throw new Error('完了したボックスに未入力の印');
   wv.eval('pStates['+pid+'].ts['+kikaku2+']="着手前"'); wv.render();
   // 別の人に切り替えると、表示だけになる
   wv.setCurUser('野内　早紀'); wv.render();
