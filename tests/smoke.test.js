@@ -510,6 +510,30 @@ run('ホームのタブは左が個人ダッシュボード、右が全体ダッ
   if(!wv.document.getElementById('homePanel-me').classList.contains('on') || wv.document.getElementById('homePanel-all').classList.contains('on')) throw new Error('起動時に個人ダッシュボードが開かない');
   if(!wv.document.getElementById('homeTab-me').classList.contains('on')) throw new Error('個人ダッシュボードのタブが選ばれていない');
 });
+run('11/25 テンプレート：162 木工事検査の途中に増えたタスクに合わせてチェックを移す（0.6.3）', () => {
+  const V12 = w.eval('TEMPLATE_V12');
+  const full = i => Object.assign({c:false,f:false,h:false,hm:'',j:''}, i);
+  if(w.v6Hash(V12[162].old.map(full))!==V12[162].h) throw new Error('更新前の文言の印が合わない');
+  const T0 = w.eval('TASKS').find(t=>t.no===162);
+  if(T0.items.length!==15 || !T0.items[5].t.startsWith('開き戸の開口寸法確認')) throw new Error('162 のタスク');
+  const arr = (n,on) => Array.from({length:n},(_,i)=>on.includes(i));
+  const mk = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  const base = () => ({boxNoVer:11, props:[{id:1,name:'旧邸'}], nextPid:2,
+    pStates:{1:{ts:{'162':'進行中'}, done:{'162':arr(14,[4,5,13])}, fuyo:{}, help:{}, memo:{}, note:{}, overrideDue:{}}},
+    itemCheckDates:{'1_162_5':'2026-11-20'}, taskLinks:{'162_13':[{title:'x',url:'https://x'}]}});
+  const check = (wv,label) => {
+    const d = wv.eval('pStates[1].done[162]').map((v,i)=>v?i:-1).filter(i=>i>=0).join(',');
+    if(d!=='4,6,14' || wv.eval('pStates[1].done[162].length')!==15) throw new Error(label+'：チェックの位置 '+d);
+    if(wv.eval('itemCheckDates["1_162_6"]')!=='2026-11-20' || !wv.eval('taskLinks["162_14"]')) throw new Error(label+'：チェック日・添付');
+  };
+  check(mk(base()), '未編集');
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS_V8))');
+  if(tasks.find(t=>t.no===162).items.length!==14) throw new Error('TASKS_V8 の162が更新前になっていない');
+  const wv = mk(Object.assign(base(), {tasks}));
+  if(wv.eval('TASKS').find(t=>t.no===162).items.length!==15) throw new Error('編集済み：一覧が新しくならない');
+  check(wv, '編集済み');
+});
 run('打合せ9ボックスのフェーズ変更：編集済みの保存データにも反映（0.5.7）', () => {
   const tasks = w.eval('JSON.parse(JSON.stringify(TASKS))').map(t=>t.no>=120&&t.no<=128?Object.assign({}, t, {group:'着工前工務業務'}):t);
   tasks.find(t=>t.no===128).name = '自分で名前を変えた左官';
