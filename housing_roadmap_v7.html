@@ -131,6 +131,8 @@ table.main th{padding:8px 10px;text-align:left;font-size:13px;font-weight:500;co
 table.main td{padding:9px 10px;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);vertical-align:middle}
 table.main tr:last-child td{border-bottom:none}
 table.main tr:hover td{background:var(--color-background-secondary,#f5f5f5)}
+.plan-in{font-size:12px;height:28px;padding:2px 4px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:6px;width:122px;background:#fff;color:inherit;font-family:inherit}
+.plan-in.plan-empty{background:#EAF6EE;border-color:#b7e1cd}
 .tname-txt.over{color:#A32D2D;font-weight:500}
 .done-row .tlink .tname-txt{text-decoration:line-through;color:var(--color-text-tertiary,#aaa)}
 /* 完了したボックスは行全体に横線を引いてグレーにする（ロードマップ・担当ボックス。スマホのカードも同じ） */
@@ -305,6 +307,12 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 .mt-tag{font-size:12px;padding:3px 9px;border-radius:20px;background:#EFEFEC;color:var(--color-text-secondary,#666);white-space:nowrap}
 .mt-tag-over{background:#FDE2E2;color:#C0392B;font-weight:700}
 .mt-tag-soon{background:#FFF0D6;color:#B26A00;font-weight:700}
+.mt-tag-noplan{background:#EAF6EE;color:#1E7A45;font-weight:700}
+.mt-chip-noplan{margin-left:4px;font-size:10px;padding:0 5px;border-radius:8px;background:#EAF6EE;color:#1E7A45;font-weight:700}
+.mt-sum-noplan{border-color:#9BD3B0!important;background:#F2FAF5!important}
+.mt-sum-noplan .mt-sum-val{color:#1E7A45}
+.mt-plan-alert{margin:0 0 .75rem;padding:10px 14px;border-radius:10px;background:#FFF7E0;border:1px solid #F2D27A;color:#7A5200;font-size:13px;line-height:1.6}
+.noplan-tag{margin-left:6px;font-size:10px;padding:1px 6px;border-radius:8px;background:#EAF6EE;color:#1E7A45;font-weight:700;white-space:nowrap}
 .mt-tag-done{background:#EAF3DE;color:#3B6D11}
 .mt-open{font-size:12px;padding:5px 12px;border-radius:7px;border:.5px solid var(--color-border-secondary,#d0d0d0);background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);cursor:pointer;white-space:nowrap}
 .mt-prop-body{padding:10px 12px 12px}
@@ -347,6 +355,10 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   .rc-tbl .rc-tanto{order:7;font-size:12px!important}
   .rc-tbl .rc-due{order:8;font-size:12px!important}
   .rc-tbl .rc-due::before{content:"期日 "}
+  .rc-tbl .rc-plan-start{order:9;font-size:12px!important}
+  .rc-tbl .rc-plan-end{order:10;font-size:12px!important}
+  .rc-tbl .rc-plan-start::before{content:"開始予定 "}
+  .rc-tbl .rc-plan-end::before{content:"完了予定 "}
   .rc-tbl .rc-kb,.rc-tbl .rc-none{display:none!important}
   table.rc-tbl .badge{font-size:11px}
   /* 管理者設定のボックス一覧：1ボックス1枚のカードに（編集・削除は右上） */
@@ -508,7 +520,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.5.7（2026-11-25）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.6.0（2026-11-25）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -603,7 +615,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   </div>
   <div class="tbl-wrap">
     <table class="main rc-tbl">
-      <thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>フェーズ</th><th>カテゴリ</th><th>担当</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>
+      <thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>フェーズ</th><th>カテゴリ</th><th>担当</th><th>開始予定</th><th>完了予定</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table>
   </div>
@@ -880,7 +892,7 @@ let itemCheckDates={};  // {pid_no_idx: date}
 let taskLinks={};  // {pid_no_idx: [{title, url}]}
 
 function initPState(pid){
-  pStates[pid]={ts:{},done:{},fuyo:{},help:{},memo:{},note:{},overrideDue:{}};
+  pStates[pid]={ts:{},done:{},fuyo:{},help:{},memo:{},note:{},overrideDue:{},planStart:{},planEnd:{}};
   TASKS.forEach(t=>{
     pStates[pid].ts[t.no]=t.state||'着手前';
     pStates[pid].done[t.no]=t.items.map(i=>i.c||false);
@@ -1405,6 +1417,34 @@ function renderTabs(){
     btn.onclick=()=>setCat(btn.dataset.cat);
   });
 }
+// ===== 開始予定・完了予定（物件×ボックス。入力できるのはそのボックスの担当者だけ） =====
+// 担当者：ボックスのカテゴリ（職種）の担当者。会議・打合せは物件の主担当者
+function boxTantoOf(pid,t){
+  if(['会議','打合せ'].includes(t.category)){ const p=props.find(x=>x.id===pid); return (p&&p.tanto)||''; }
+  return (tantoMap[pid]&&tantoMap[pid][t.category])||'';
+}
+function canEditPlan(pid,t){ const tn=boxTantoOf(pid,t); return !!(curUser && tn && tn===curUser); }
+function planOf(pid,no,kind){ const st=pStates[pid]; const m=st&&(kind==='start'?st.planStart:st.planEnd); return (m&&m[no])||''; }
+function planCell(pid,t,kind){
+  const v=planOf(pid,t.no,kind), cls='rc-plan rc-plan-'+kind;
+  const done=pStates[pid]&&pStates[pid].ts&&pStates[pid].ts[t.no]==='完了';
+  // 完了したボックスは表示だけ（予定の入力・未入力の印は、完了していないボックスだけ）
+  if(!done && canEditPlan(pid,t))
+    return '<td class="'+cls+'"><input type="date" class="plan-in'+(v?'':' plan-empty')+'" value="'+v+'" title="'+(kind==='start'?'開始予定':'完了予定')+'" onclick="event.stopPropagation()" onchange="setPlan('+pid+','+t.no+',\''+kind+'\',this)"></td>';
+  return '<td class="'+cls+(v?'':' rc-none')+'" style="font-size:13px;color:var(--color-text-secondary,#666);white-space:nowrap">'+(v?v.slice(5).replace('-','/'):'―')+'</td>';
+}
+function setPlan(pid,no,kind,el){
+  const t=TASKS.find(x=>x.no===no);
+  if(!t||!canEditPlan(pid,t)||(pStates[pid].ts&&pStates[pid].ts[no]==='完了')){ alert('開始予定・完了予定を入力できるのは、このボックスの担当者だけです。'); el.value=planOf(pid,no,kind); return; }
+  const st=pStates[pid]; if(!st.planStart) st.planStart={}; if(!st.planEnd) st.planEnd={};
+  const v=el.value||'';
+  const other=kind==='start'?st.planEnd[no]:st.planStart[no];
+  if(v && other && (kind==='start'? v>other : v<other)){ alert('完了予定は開始予定より後の日付にしてください。'); el.value=planOf(pid,no,kind); return; }
+  const m=kind==='start'?st.planStart:st.planEnd;
+  if(v) m[no]=v; else delete m[no];
+  el.classList.toggle('plan-empty',!v);
+  scheduleSave();
+}
 function fmtDue(due){
   if(!due)return'―';
   const d=new Date(due);d.setHours(0,0,0,0);
@@ -1480,7 +1520,7 @@ function render(){
   else if(so==='group')list=list.slice().sort((a,b)=>(GORDER[a.group]??9)-(GORDER[b.group]??9)||TASKS.indexOf(a)-TASKS.indexOf(b));
   else list=list.slice().sort((a,b)=>TASKS.indexOf(a)-TASKS.indexOf(b));
   const tbody=document.getElementById('tbody');
-  if(!list.length){tbody.innerHTML='<tr><td colspan="8" class="empty">該当なし</td></tr>';return;}
+  if(!list.length){tbody.innerHTML='<tr><td colspan="10" class="empty">該当なし</td></tr>';return;}
   tbody.innerHTML=list.map(t=>{
     const st=ts[t.no],prog=calcProg(t.no);
     const hasHelp=help[t.no]&&help[t.no].some(Boolean);
@@ -1500,6 +1540,7 @@ function render(){
       +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
       +'<td class="rc-cat">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
       +'<td class="rc-tanto'+(tanto==='―'?' rc-none':'')+'" style="font-size:13px;color:var(--color-text-secondary,#666)">'+tanto+'</td>'
+      +planCell(curPid,t,'start')+planCell(curPid,t,'end')
       +'<td class="rc-due'+(!dueTxt||dueTxt==='―'?' rc-none':'')+'" style="font-size:13px;white-space:nowrap">'+dueTxt+'</td>'
       +'<td class="rc-kb" style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
       +'<td class="rc-st">'+(allFuyo?'<span class="badge sFuyo" title="全タスクが不要（進捗では完了扱い）">不要</span>':'<span class="badge s'+st+'">'+st+'</span>')+'</td></tr>';
@@ -2011,7 +2052,9 @@ function renderMyTasks(targetUser){
       const st = (ps2.ts&&ps2.ts[t.no])||'着手前';
       const fuyo = st==='完了' && isBoxFuyo(p.id,t.no);
       const due = myTaskDue(p.id,t);
-      all.push({task:t, state:st, fuyo, due, diff: st==='完了'?null:myTaskDiff(due)});
+      // 予定未入力：完了していないボックスで、開始予定か完了予定が空
+      const noPlan = st!=='完了' && (!planOf(p.id,t.no,'start') || !planOf(p.id,t.no,'end'));
+      all.push({task:t, state:st, fuyo, due, noPlan, diff: st==='完了'?null:myTaskDiff(due)});
     });
     if(!all.length) return;
     const counted = all.filter(r=>!r.fuyo);
@@ -2020,6 +2063,7 @@ function renderMyTasks(targetUser){
       done: counted.filter(r=>r.state==='完了').length,
       over: all.filter(r=>r.diff!==null&&r.diff<0).length,
       soon: all.filter(r=>r.diff!==null&&r.diff>=0&&r.diff<=7).length,
+      noPlan: all.filter(r=>r.noPlan).length,
       rows: all.filter(r=>myTaskActiveStates.size===0||myTaskActiveStates.has(r.state))};
     // 未完了を期日の近い順（期日なしは後ろ）、完了は後ろに番号順
     g.rows.sort((a,b)=>{
@@ -2039,18 +2083,22 @@ function renderMyTasks(targetUser){
     return;
   }
 
-  const sum = groups.reduce((s,g)=>{ s.left+=g.total-g.done; s.over+=g.over; s.soon+=g.soon; return s; },{left:0,over:0,soon:0});
-  const summary = '<div class="mt-summary">'
+  const sum = groups.reduce((s,g)=>{ s.left+=g.total-g.done; s.over+=g.over; s.soon+=g.soon; s.noPlan+=g.noPlan; return s; },{left:0,over:0,soon:0,noPlan:0});
+  const planAlert = sum.noPlan ? '<div class="mt-plan-alert" id="mtPlanAlert">⚠️ 開始予定・完了予定が未入力のボックスが <b>'+sum.noPlan+'件</b> あります（完了したボックスを除く）。'
+      +(user===curUser?'各物件を開いて、緑色の欄に日付を入力してください。':'入力できるのは担当者（'+user+'）だけです。')+'</div>' : '';
+  const summary = planAlert+'<div class="mt-summary">'
     +'<div class="mt-sum-item"><div class="mt-sum-label">担当物件</div><div class="mt-sum-val">'+groups.length+'</div></div>'
     +'<div class="mt-sum-item"><div class="mt-sum-label">未完了</div><div class="mt-sum-val">'+sum.left+'</div></div>'
     +'<div class="mt-sum-item'+(sum.over?' mt-sum-over':'')+'"><div class="mt-sum-label">期日超過</div><div class="mt-sum-val">'+sum.over+'</div></div>'
     +'<div class="mt-sum-item'+(sum.soon?' mt-sum-soon':'')+'"><div class="mt-sum-label">7日以内</div><div class="mt-sum-val">'+sum.soon+'</div></div>'
+    +'<div class="mt-sum-item'+(sum.noPlan?' mt-sum-noplan':'')+'"><div class="mt-sum-label">予定未入力</div><div class="mt-sum-val">'+sum.noPlan+'</div></div>'
     +'</div>';
 
   const index = groups.length>1 ? '<div class="mt-index">'+groups.map(g=>
       '<button class="mt-chip" onclick="jumpMyTaskProp('+g.prop.id+')">'+g.prop.name
       +(g.over?'<span class="mt-chip-over">超過'+g.over+'</span>':'')
       +(g.soon?'<span class="mt-chip-soon">7日内'+g.soon+'</span>':'')
+      +(g.noPlan?'<span class="mt-chip-noplan">予定未'+g.noPlan+'</span>':'')
       +'</button>').join('')+'</div>' : '';
 
   const cards = groups.map(g=>{
@@ -2072,9 +2120,10 @@ function renderMyTasks(targetUser){
       return '<tr class="'+rowCls+'">'
         +'<td class="no-col rc-no">'+t.no+'</td>'
         +'<td class="rc-name"><span class="tlink" onclick="openMyTaskModal('+p.id+','+t.no+')">'
-        +'<span class="tname-txt'+(isBoxOverdue(p.id,t.no)?' over':'')+'">'+t.name+'</span></span></td>'
+        +'<span class="tname-txt'+(isBoxOverdue(p.id,t.no)?' over':'')+'">'+t.name+'</span>'+(r.noPlan?'<span class="noplan-tag">予定未入力</span>':'')+'</span></td>'
         +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
         +'<td class="rc-cat">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
+        +planCell(p.id,t,'start')+planCell(p.id,t,'end')
         +'<td class="rc-due'+(dueHtml==='―'?' rc-none':'')+'" style="font-size:13px;white-space:nowrap">'+dueHtml+'</td>'
         +'<td class="rc-kb" style="font-size:13px;color:var(--color-text-secondary,#666)">'+kb+'</td>'
         +'<td class="rc-st"><span class="badge '+stCls+'">'+stLabel+'</span></td>'
@@ -2082,7 +2131,7 @@ function renderMyTasks(targetUser){
     }).join('');
     const table = g.rows.length
       ? '<div class="tbl-wrap"><table class="main rc-tbl">'
-        +'<thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>フェーズ</th><th>カテゴリ</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>'
+        +'<thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>フェーズ</th><th>カテゴリ</th><th>開始予定</th><th>完了予定</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>'
         +'<tbody>'+rows+'</tbody></table></div>'
       : '<div class="mt-none">この状態のボックスはありません</div>';
     return '<div class="mt-prop'+(g.over?' mt-prop-over':'')+(closed?' mt-closed':'')+'" id="mtProp_'+p.id+'">'
@@ -2097,6 +2146,7 @@ function renderMyTasks(targetUser){
       +'<div class="mt-bar"><div class="mt-bar-in" style="width:'+pct+'%"></div></div></div>'
       +(g.over?'<span class="mt-tag mt-tag-over">期日超過 '+g.over+'</span>':'')
       +(g.soon?'<span class="mt-tag mt-tag-soon">7日以内 '+g.soon+'</span>':'')
+      +(g.noPlan?'<span class="mt-tag mt-tag-noplan">予定未入力 '+g.noPlan+'</span>':'')
       +(!g.over&&!g.soon&&g.done<g.total?'<span class="mt-tag">急ぎなし</span>':'')
       +(g.done>=g.total?'<span class="mt-tag mt-tag-done">すべて完了</span>':'')
       +'<button class="mt-open" onclick="event.stopPropagation();openProp('+p.id+')">ロードマップ ›</button>'
@@ -2125,7 +2175,8 @@ function exportAllData(){
     pStates: Object.fromEntries(
       Object.entries(pStates).map(([pid,s])=>[pid,{
         ts: s.ts, done: s.done, fuyo: s.fuyo,
-        help: s.help, memo: s.memo, note: s.note||{}, overrideDue: s.overrideDue||{}
+        help: s.help, memo: s.memo, note: s.note||{}, overrideDue: s.overrideDue||{},
+        planStart: s.planStart||{}, planEnd: s.planEnd||{}
       }])
     )
   };
@@ -2167,11 +2218,13 @@ function mergeImportData(data){
       props.push(Object.assign({}, src, {id:pid}, fromSheet?{dueFromSheet:true}:{}));
       res.added.push(src.name);
     }
+    const keepPlan = pStates[pid] ? {planStart:pStates[pid].planStart||{}, planEnd:pStates[pid].planEnd||{}} : null;
     initPState(pid);
+    if(keepPlan){ pStates[pid].planStart = keepPlan.planStart; pStates[pid].planEnd = keepPlan.planEnd; }
     const s = data.pStates && data.pStates[old];
     if(s){
-      ['ts','fuyo','done','help','memo','note','overrideDue'].forEach(f=>{
-        Object.entries(s[f]||{}).forEach(([no,v])=>{ if(f==='ts'||f==='overrideDue'||TASKS.some(t=>t.no===Number(no))) pStates[pid][f][no]=v; });
+      ['ts','fuyo','done','help','memo','note','overrideDue','planStart','planEnd'].forEach(f=>{
+        Object.entries(s[f]||{}).forEach(([no,v])=>{ if(f==='ts'||f==='overrideDue'||f==='planStart'||f==='planEnd'||TASKS.some(t=>t.no===Number(no))) pStates[pid][f][no]=v; });
       });
     }
     tantoMap[pid] = Object.assign({}, (data.tantoMap||{})[old]||{});
@@ -2267,7 +2320,7 @@ function importAllData(input){
           Object.assign(pStates[pidN].help, s.help||{});
           Object.assign(pStates[pidN].memo, s.memo||{});
           Object.assign(pStates[pidN].note, s.note||{});
-          Object.assign(pStates[pidN].overrideDue, s.overrideDue||{});
+          Object.assign(pStates[pidN].overrideDue, s.overrideDue||{}); Object.assign(pStates[pidN].planStart, s.planStart||{}); Object.assign(pStates[pidN].planEnd, s.planEnd||{});
         });
       }
       migrateDues(data);
@@ -2353,7 +2406,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.5.7';
+const APP_VERSION = '0.6.0';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
@@ -2704,7 +2757,9 @@ function saveData(){
           help: s.help,
           memo: s.memo,
           note: s.note||{},
-          overrideDue: s.overrideDue||{}
+          overrideDue: s.overrideDue||{},
+          planStart: s.planStart||{},
+          planEnd: s.planEnd||{}
         }])
       )
     };
@@ -3009,7 +3064,7 @@ function loadData(){
         Object.assign(pStates[pidN].help, s.help||{});
         Object.assign(pStates[pidN].memo, s.memo||{});
         Object.assign(pStates[pidN].note, s.note||{});
-        Object.assign(pStates[pidN].overrideDue, s.overrideDue||{});
+        Object.assign(pStates[pidN].overrideDue, s.overrideDue||{}); Object.assign(pStates[pidN].planStart, s.planStart||{}); Object.assign(pStates[pidN].planEnd, s.planEnd||{});
       });
     }
     migrateDues(data);
