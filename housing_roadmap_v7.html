@@ -529,7 +529,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.7.0（2026-11-26）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.7.1（2026-11-26）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1254,7 +1254,7 @@ let gateDates = {}; // {pid: {gateName: 'YYYY-MM-DD'}}
 function openGateDlg(){
   const p=props.find(x=>x.id===curPid);
   document.getElementById('gateDlgSub').textContent=p.name+' のゲート日程'
-    +(p.dueFromSheet?'（この物件の期日はスプレッドシートから取り込んだ値です。ゲートを保存しても期日は変わりません）'
+    +(p.dueFromSheet?'（この物件の期日はスプレッドシートから取り込んだ値です。ゲートを保存しても期日は変わりません。ボックス管理で所要日程を変えたボックスだけは計算し直します）'
       :p.dueLegacy?'（この物件は以前からの登録のため、期日は以前の計算（キックオフ基準）のままです）':'');
   document.getElementById('gateDlgFooter').style.display='none';
   if(!gateDates[curPid]) gateDates[curPid]={};
@@ -1297,8 +1297,10 @@ function legacyDues(pid){
 }
 function calcDues(pid){
   const p=props.find(x=>x.id===pid);
-  if(!p || p.dueFromSheet || !pStates[pid]) return false;
-  if(p.dueLegacy){ pStates[pid].overrideDue=legacyDues(pid); return true; }
+  if(!p || !pStates[pid]) return false;
+  // シートから取り込んだ物件・以前からの物件も、ボックス管理で所要日程を変えたボックスだけは計算する（0.7.1）
+  if(p.dueFromSheet){ applyBoxDues(pid, Object.keys(gateMapEdits)); return true; }
+  if(p.dueLegacy){ pStates[pid].overrideDue=legacyDues(pid); applyBoxDues(pid, Object.keys(gateMapEdits)); return true; }
   const gd=gateDates[pid]||{};
   const od={};
   TASKS.forEach(t=>{
@@ -1318,6 +1320,20 @@ let gateMapEdits = {};
 function gateMapOf(no){
   if(Object.prototype.hasOwnProperty.call(gateMapEdits,no)){ const e=gateMapEdits[no]; return e&&e.gate?e:null; }
   return TASK_GATE_MAP[no]||null;
+}
+// 指定したボックスの期日を、対象ゲート − 所要日程で出し直す（対象ゲートなし → 期日を消す。その物件にゲートの日付が無ければ変えない）
+function applyBoxDues(pid, nos){
+  const st=pStates[pid]; if(!st) return;
+  if(!st.overrideDue) st.overrideDue={};
+  const gd=gateDates[pid]||{};
+  nos.forEach(n=>{
+    const no=Number(n), m=gateMapOf(no);
+    if(!m){ delete st.overrideDue[no]; return; }
+    if(!gd[m.gate]) return;
+    const d=new Date(gd[m.gate]+'T00:00:00Z'); if(isNaN(d)) return;
+    d.setUTCDate(d.getUTCDate()-m.days);
+    st.overrideDue[no]=d.toISOString().slice(0,10);
+  });
 }
 function gateMapLabel(m){ return m&&m.gate?(m.gate+'の'+(m.days<0?(-m.days)+'日後':m.days+'日前')):'期日なし'; }
 
@@ -2262,6 +2278,8 @@ function mergeImportData(data){
     const pre = old+'_';
     Object.entries(data.kanryoDates||{}).forEach(([k,v])=>{ if(k.startsWith(pre)) kanryoDates[pid+'_'+k.slice(pre.length)]=v; });
     Object.entries(data.itemCheckDates||{}).forEach(([k,v])=>{ if(k.startsWith(pre)) itemCheckDates[pid+'_'+k.slice(pre.length)]=v; });
+    // ボックス管理で所要日程を変えたボックスは、取り込み直してもアプリの計算を使う
+    applyBoxDues(pid, Object.keys(gateMapEdits));
   });
   (data.staffList||[]).forEach(n=>{ if(n && !staffList.includes(n)) staffList.push(n); });
   // removeStaff：スタッフ一覧から外す名前（全物件の担当者設定からも外す）
@@ -2437,7 +2455,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.7.0';
+const APP_VERSION = '0.7.1';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
@@ -2641,7 +2659,7 @@ function setGateFields(no){
   const edited = no!==null && Object.prototype.hasOwnProperty.call(gateMapEdits,no);
   document.getElementById('teGateNote').textContent =
     '期日 ＝ 対象ゲートの日付 − 所要日程（マイナスはゲートの後）。所要日程の正はスプレッドシートです。ここで変えると、この端末のアプリだけに反映されます。'
-    +'スプレッドシートから取り込んだ物件・以前からの物件の期日は変わりません。'
+    +'保存すると、登録しているすべての物件で、このボックスの期日を計算し直します（その物件に対象ゲートの日付が無いときは変わりません）。ドライブから取り込み直しても、ここで変えたボックスはこの計算のままです。'
     +(edited?' テンプレートの値：'+gateMapLabel(tpl)+'（この端末で変更済み）':'');
 }
 
@@ -2703,6 +2721,7 @@ function saveTaskEdit(){
   if(gGate && (gDaysRaw==='' || !/^-?\d+$/.test(gDaysRaw))){ document.getElementById('teDays').style.borderColor='#E24B4A'; alert('所要日程を日数（整数）で入れてください。'); return; }
   document.getElementById('teDays').style.borderColor='';
   const newGm = gGate ? {gate:gGate, days:parseInt(gDaysRaw,10)} : null;
+  let gateChangedNo = editingTaskNo===null && newGm ? no : null;
 
   if(editingTaskNo===null){
     // 新規追加
@@ -2735,6 +2754,7 @@ function saveTaskEdit(){
       if(no!==oldNo) delete gateMapEdits[oldNo];
       setGateMapEdit(no, newGm);
       if(gateMapLabel(oldGm)!==gateMapLabel(newGm)){
+        gateChangedNo = no;
         const g='所要日程 '+gateMapLabel(oldGm)+'→'+gateMapLabel(newGm);
         detail = detail==='変更なし' ? g : detail+'、'+g;
       }
@@ -2789,6 +2809,8 @@ function saveTaskEdit(){
   tasksEdited = true;
   // 所要日程が変わったかもしれないので、計算で期日を出している物件の期日を出し直す
   props.forEach(p=>calcDues(p.id));
+  // 変えたボックスは、どの物件も（テンプレートの値に戻したときも）計算し直す
+  if(gateChangedNo!==null) props.forEach(p=>applyBoxDues(p.id, [gateChangedNo]));
   closeOv('taskEditDlgOv');
   renderTaskEditList();
   scheduleSave();

@@ -989,7 +989,7 @@ run('登録済み・取り込んだ物件の期日は変えず、新しい物件
   b.mergeImportData({appVersion:'0.2.2', props:[{id:9,name:'別アプリ邸'}], pStates:{}});
   const q=b.eval('props'); if(!q.find(x=>x.name==='杉田様邸').dueFromSheet || q.find(x=>x.name==='別アプリ邸').dueFromSheet) throw new Error('取り込み時の印');
 });
-run('ボックス編集で対象ゲート・所要日程を変える（0.7.0）', () => {
+run('ボックス編集で対象ゲート・所要日程を変える（0.7.0・0.7.1 今の物件にも）', () => {
   const mk = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; if(data) win.localStorage.setItem('housing_roadmap_v7', data); }}).window;
   const a = mk(null), d = a.document;
@@ -1007,7 +1007,17 @@ run('ボックス編集で対象ゲート・所要日程を変える（0.7.0）'
   if(!d.getElementById('teGateNote').textContent.includes('スプレッドシート')) throw new Error('注記が無い');
   d.getElementById('teDays').value='10'; a.saveTaskEdit();
   if(a.eval('pStates['+pid+'].overrideDue[58]')!=='2026-10-23') throw new Error('所要日程を変えても期日が変わらない '+a.eval('pStates['+pid+'].overrideDue[58]'));
-  if(a.eval('pStates['+sid+'].overrideDue[58]')!=='2026-08-01') throw new Error('取り込んだ物件の期日が変わった');
+  // 今登録している物件（シートから取り込んだ物件）も、変えたボックスだけ計算し直す（0.7.1）
+  if(a.eval('pStates['+sid+'].overrideDue[58]')!=='2026-10-23') throw new Error('取り込んだ物件の期日が変わらない '+a.eval('pStates['+sid+'].overrideDue[58]'));
+  a.eval('pStates['+sid+'].overrideDue[61]="2026-07-07"');
+  a.openProp(sid); a.openGateDlg(); d.getElementById('gate-上棟').value='2027-01-10'; a.saveGate();
+  if(a.eval('pStates['+sid+'].overrideDue[61]')!=='2026-07-07' || a.eval('pStates['+sid+'].overrideDue[58]')!=='2026-10-23') throw new Error('変えていないボックスの期日が変わった／変えたボックスが戻った');
+  // 取り込み直しても、変えたボックスはアプリの計算のまま（ほかのボックスはシートの期日）
+  a.mergeImportData({props:[{id:9,name:'シート邸'}], gateDates:{9:{'着工':'2026-11-02'}}, pStates:{9:{overrideDue:{58:'2026-08-01',61:'2026-07-08'}}}});
+  if(a.eval('pStates['+sid+'].overrideDue[58]')!=='2026-10-23' || a.eval('pStates['+sid+'].overrideDue[61]')!=='2026-07-08') throw new Error('取り込み直したときの期日 '+JSON.stringify(a.eval('pStates['+sid+'].overrideDue')));
+  // ゲートの日付が無い物件は変えない
+  a.mergeImportData({props:[{id:8,name:'ゲート無し邸'}], gateDates:{8:{}}, pStates:{8:{overrideDue:{58:'2026-09-09'}}}});
+  if(a.eval('pStates[props.find(p=>p.name==="ゲート無し邸").id].overrideDue[58]')!=='2026-09-09') throw new Error('ゲートの日付が無いのに期日が変わった');
   if(a.eval('TASK_GATE_MAP[58].days')!==7) throw new Error('テンプレートの値が書き換わった');
   const h = a.eval('boxHistory').slice(-1)[0];
   if(!h || !h.detail.includes('所要日程 着工の7日前→着工の10日前')) throw new Error('更新履歴 '+JSON.stringify(h));
@@ -1021,6 +1031,7 @@ run('ボックス編集で対象ゲート・所要日程を変える（0.7.0）'
   a.closeOv('taskEditDlgOv');
   a.openEditTaskDlg(58); d.getElementById('teGate').value=''; a.saveTaskEdit();
   if(a.eval('pStates['+pid+'].overrideDue[58]')) throw new Error('対象ゲートなしで期日が残る');
+  if(a.eval('pStates['+sid+'].overrideDue[58]')) throw new Error('対象ゲートなしで取り込んだ物件の期日が残る');
   // 保存して開き直しても残る
   a.saveData(); const b = mk(a.localStorage.getItem('housing_roadmap_v7'));
   if(b.eval('gateMapOf(58)')!==null || b.eval('JSON.stringify(gateMapEdits)')!=='{"58":null}') throw new Error('開き直すと戻る '+b.eval('JSON.stringify(gateMapEdits)'));
@@ -1028,6 +1039,7 @@ run('ボックス編集で対象ゲート・所要日程を変える（0.7.0）'
   b.openEditTaskDlg(58); b.document.getElementById('teGate').value='着工'; b.document.getElementById('teDays').value='7'; b.saveTaskEdit();
   if(b.eval('Object.keys(gateMapEdits).length')!==0) throw new Error('テンプレートと同じ値なのに印が残る');
   if(b.eval('pStates['+pid+'].overrideDue[58]')!=='2026-10-26') throw new Error('戻した期日 '+b.eval('pStates['+pid+'].overrideDue[58]'));
+  if(b.eval('pStates['+sid+'].overrideDue[58]')!=='2026-10-26') throw new Error('戻した期日（取り込んだ物件） '+b.eval('pStates['+sid+'].overrideDue[58]'));
   // 新しいボックスにも設定できる
   b.openAddTaskDlg(); b.document.getElementById('teTaskName').value='新しい箱'; b.document.getElementById('teGate').value='着工'; b.document.getElementById('teDays').value='1'; b.saveTaskEdit();
   const nno = b.eval('TASKS[TASKS.length-1].no');
