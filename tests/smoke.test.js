@@ -989,6 +989,52 @@ run('登録済み・取り込んだ物件の期日は変えず、新しい物件
   b.mergeImportData({appVersion:'0.2.2', props:[{id:9,name:'別アプリ邸'}], pStates:{}});
   const q=b.eval('props'); if(!q.find(x=>x.name==='杉田様邸').dueFromSheet || q.find(x=>x.name==='別アプリ邸').dueFromSheet) throw new Error('取り込み時の印');
 });
+run('ボックス編集で対象ゲート・所要日程を変える（0.7.0）', () => {
+  const mk = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; if(data) win.localStorage.setItem('housing_roadmap_v7', data); }}).window;
+  const a = mk(null), d = a.document;
+  a.setCurUser('江藤　奨');
+  // 新しい物件（計算する）と、シートから取り込んだ物件（計算しない）
+  a.openAddDlg(); d.getElementById('fName').value='計算邸'; a.addProperty();
+  const pid = a.eval('props.find(p=>p.name==="計算邸").id');
+  a.openProp(pid); a.openGateDlg(); d.getElementById('gate-着工').value='2026-11-02'; a.saveGate();
+  a.mergeImportData({props:[{id:9,name:'シート邸'}], gateDates:{9:{'着工':'2026-11-02'}}, pStates:{9:{overrideDue:{58:'2026-08-01'}}}});
+  const sid = a.eval('props.find(p=>p.name==="シート邸").id');
+  if(a.eval('pStates['+pid+'].overrideDue[58]')!=='2026-10-26') throw new Error('前提の期日 '+a.eval('pStates['+pid+'].overrideDue[58]'));
+  // 編集画面に今の値が出る
+  a.openEditTaskDlg(58);
+  if(d.getElementById('teGate').value!=='着工' || d.getElementById('teDays').value!=='7') throw new Error('編集画面の対象ゲート・所要日程 '+d.getElementById('teGate').value+' '+d.getElementById('teDays').value);
+  if(!d.getElementById('teGateNote').textContent.includes('スプレッドシート')) throw new Error('注記が無い');
+  d.getElementById('teDays').value='10'; a.saveTaskEdit();
+  if(a.eval('pStates['+pid+'].overrideDue[58]')!=='2026-10-23') throw new Error('所要日程を変えても期日が変わらない '+a.eval('pStates['+pid+'].overrideDue[58]'));
+  if(a.eval('pStates['+sid+'].overrideDue[58]')!=='2026-08-01') throw new Error('取り込んだ物件の期日が変わった');
+  if(a.eval('TASK_GATE_MAP[58].days')!==7) throw new Error('テンプレートの値が書き換わった');
+  const h = a.eval('boxHistory').slice(-1)[0];
+  if(!h || !h.detail.includes('所要日程 着工の7日前→着工の10日前')) throw new Error('更新履歴 '+JSON.stringify(h));
+  // ゲートの後（マイナス）、対象ゲートなし
+  a.openEditTaskDlg(58); d.getElementById('teDays').value='-3'; a.saveTaskEdit();
+  if(a.eval('pStates['+pid+'].overrideDue[58]')!=='2026-11-05') throw new Error('マイナスの所要日程 '+a.eval('pStates['+pid+'].overrideDue[58]'));
+  let alerted=''; a.alert = m=>{ alerted=m; };
+  a.openEditTaskDlg(58); d.getElementById('teGate').value='上棟'; d.getElementById('teDays').value=''; a.saveTaskEdit();
+  if(!alerted.includes('所要日程')) throw new Error('所要日程が空のときに知らせない');
+  if(a.eval('gateMapEdits[58].gate')!=='着工') throw new Error('所要日程が空なのに保存された');
+  a.closeOv('taskEditDlgOv');
+  a.openEditTaskDlg(58); d.getElementById('teGate').value=''; a.saveTaskEdit();
+  if(a.eval('pStates['+pid+'].overrideDue[58]')) throw new Error('対象ゲートなしで期日が残る');
+  // 保存して開き直しても残る
+  a.saveData(); const b = mk(a.localStorage.getItem('housing_roadmap_v7'));
+  if(b.eval('gateMapOf(58)')!==null || b.eval('JSON.stringify(gateMapEdits)')!=='{"58":null}') throw new Error('開き直すと戻る '+b.eval('JSON.stringify(gateMapEdits)'));
+  // テンプレートと同じ値に戻すと、変更の印が消える（テンプレートの更新が届く）
+  b.openEditTaskDlg(58); b.document.getElementById('teGate').value='着工'; b.document.getElementById('teDays').value='7'; b.saveTaskEdit();
+  if(b.eval('Object.keys(gateMapEdits).length')!==0) throw new Error('テンプレートと同じ値なのに印が残る');
+  if(b.eval('pStates['+pid+'].overrideDue[58]')!=='2026-10-26') throw new Error('戻した期日 '+b.eval('pStates['+pid+'].overrideDue[58]'));
+  // 新しいボックスにも設定できる
+  b.openAddTaskDlg(); b.document.getElementById('teTaskName').value='新しい箱'; b.document.getElementById('teGate').value='着工'; b.document.getElementById('teDays').value='1'; b.saveTaskEdit();
+  const nno = b.eval('TASKS[TASKS.length-1].no');
+  if(b.eval('pStates['+pid+'].overrideDue['+nno+']')!=='2026-11-01') throw new Error('新しいボックスの期日');
+  b.deleteTask = b.deleteTask; b.confirm = ()=>true; b.deleteTask(nno);
+  if(b.eval('gateMapEdits['+nno+']')!==undefined) throw new Error('削除したボックスの所要日程が残る');
+});
 const OLD_DATA = { // 番号を詰める前（184ボックス）の保存データ
   props:[{id:1,name:'旧邸'}], nextPid:2,
   pStates:{1:{ts:{'147':'完了','148':'完了','150':'完了','184':'進行中'}, done:{'150':[true,false]}, fuyo:{}, help:{}, memo:{}, overrideDue:{'176':'2026-12-01'}}},

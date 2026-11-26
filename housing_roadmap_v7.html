@@ -529,7 +529,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.6.4（2026-11-26）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.7.0（2026-11-26）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -781,6 +781,13 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
           <option value="">― 未設定</option>
         </select>
       </div>
+      <div class="form-row"><label>対象ゲート</label>
+        <select id="teGate" style="width:100%;font-size:13px;padding:6px 8px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:7px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)">
+          <option value="">― なし（期日なし）</option>
+        </select>
+      </div>
+      <div class="form-row"><label>所要日程（日）</label><input id="teDays" type="number" step="1" placeholder="ゲートの何日前か" style="width:100%;font-size:14px;padding:6px 9px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:7px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a)"></div>
+      <div id="teGateNote" style="grid-column:1/-1;font-size:11px;color:var(--color-text-tertiary,#999);line-height:1.5;margin-top:-4px"></div>
     </div>
     <!-- チェック項目 -->
     <div style="border-top:.5px solid var(--color-border-tertiary,#e5e5e5);padding-top:.75rem;margin-top:.25rem">
@@ -1295,7 +1302,7 @@ function calcDues(pid){
   const gd=gateDates[pid]||{};
   const od={};
   TASKS.forEach(t=>{
-    const m=TASK_GATE_MAP[t.no];
+    const m=gateMapOf(t.no);
     if(!m || !gd[m.gate]) return;
     const d=new Date(gd[m.gate]+'T00:00:00Z');
     if(isNaN(d)) return;
@@ -1306,6 +1313,13 @@ function calcDues(pid){
   return true;
 }
 function recalcAllDues(){ return calcDues(curPid); }
+// ボックス管理で変えた対象ゲート・所要日程（{no:{gate,days}}。gate が空＝対象ゲートなし）。テンプレート（TASK_GATE_MAP）と違うものだけ持つ
+let gateMapEdits = {};
+function gateMapOf(no){
+  if(Object.prototype.hasOwnProperty.call(gateMapEdits,no)){ const e=gateMapEdits[no]; return e&&e.gate?e:null; }
+  return TASK_GATE_MAP[no]||null;
+}
+function gateMapLabel(m){ return m&&m.gate?(m.gate+'の'+(m.days<0?(-m.days)+'日後':m.days+'日前')):'期日なし'; }
 
 // 保存データの期日を一度だけ整える（DUE_VER）
 // ・0.2.1以前のデータ（dueVer なし）：旧計算と合わない期日がある物件はシートから取り込んだものとみなして dueFromSheet。それ以外は dueLegacy（期日はそのまま）
@@ -2197,6 +2211,7 @@ function exportAllData(){
   };
   if(tasksEdited) data.tasks = TASKS;
   if(boxHistory.length) data.boxHistory = boxHistory;
+  if(Object.keys(gateMapEdits).length) data.gateMapEdits = gateMapEdits;
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -2319,6 +2334,7 @@ function importAllData(input){
       if(Array.isArray(data.tasks)){ renameOldGroups(data.tasks); TASKS.splice(0, TASKS.length, ...data.tasks); tasksEdited = true; }
       props.splice(0, props.length, ...(data.props||[]));
       if(Array.isArray(data.boxHistory)) boxHistory = data.boxHistory;
+      gateMapEdits = (data.gateMapEdits&&typeof data.gateMapEdits==='object') ? data.gateMapEdits : {};
       if(data.nextPid) nextPid = data.nextPid;
       if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
       if(data.tantoMap) Object.assign(tantoMap, data.tantoMap); removeRetiredStaff(data); normalizeStaff();
@@ -2421,7 +2437,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.6.4';
+const APP_VERSION = '0.7.0';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
@@ -2585,6 +2601,7 @@ function openAddTaskDlg(){
   fillTaskDlgSelects();
   document.getElementById('teTaskGroup').value = '';
   document.getElementById('teTaskCat').value = '';
+  setGateFields(null);
   renderTempItems();
   openOv('taskEditDlgOv');
   setTimeout(()=>document.getElementById('teTaskName').focus(),80);
@@ -2602,6 +2619,7 @@ function openEditTaskDlg(no){
   fillTaskDlgSelects();
   document.getElementById('teTaskGroup').value = t.group||'';
   document.getElementById('teTaskCat').value = t.category||'';
+  setGateFields(t.no);
   renderTempItems();
   openOv('taskEditDlgOv');
 }
@@ -2611,6 +2629,20 @@ function fillTaskDlgSelects(){
   const cSel=document.getElementById('teTaskCat');
   gSel.innerHTML='<option value="">― 未設定</option>'+GROUPS_ADMIN.map(g=>'<option value="'+g+'">'+g+'</option>').join('');
   cSel.innerHTML='<option value="">― 未設定</option>'+CATS_TANTO.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+  const gtSel=document.getElementById('teGate');
+  gtSel.innerHTML='<option value="">― なし（期日なし）</option>'+GATES.map(g=>'<option value="'+g.name+'">'+g.name+'</option>').join('');
+}
+// 対象ゲート・所要日程の欄（no が null なら新規）
+function setGateFields(no){
+  const m = no===null ? null : gateMapOf(no);
+  document.getElementById('teGate').value = m?m.gate:'';
+  document.getElementById('teDays').value = m?m.days:'';
+  const tpl = no===null ? null : (TASK_GATE_MAP[no]||null);
+  const edited = no!==null && Object.prototype.hasOwnProperty.call(gateMapEdits,no);
+  document.getElementById('teGateNote').textContent =
+    '期日 ＝ 対象ゲートの日付 − 所要日程（マイナスはゲートの後）。所要日程の正はスプレッドシートです。ここで変えると、この端末のアプリだけに反映されます。'
+    +'スプレッドシートから取り込んだ物件・以前からの物件の期日は変わりません。'
+    +(edited?' テンプレートの値：'+gateMapLabel(tpl)+'（この端末で変更済み）':'');
 }
 
 function addCheckItem(){
@@ -2666,12 +2698,18 @@ function saveTaskEdit(){
   const kept = tempItems.filter(i=>i.t.trim());
   const oiList = kept.map(i=>i._oi); // 新しい位置 → 編集前の位置（新規は undefined）
   const items = kept.map(({_oi,...i})=>{ i.why=(i.why||'').trim(); if(!i.why) delete i.why; return i; });
+  const gGate = document.getElementById('teGate').value;
+  const gDaysRaw = document.getElementById('teDays').value.trim();
+  if(gGate && (gDaysRaw==='' || !/^-?\d+$/.test(gDaysRaw))){ document.getElementById('teDays').style.borderColor='#E24B4A'; alert('所要日程を日数（整数）で入れてください。'); return; }
+  document.getElementById('teDays').style.borderColor='';
+  const newGm = gGate ? {gate:gGate, days:parseInt(gDaysRaw,10)} : null;
 
   if(editingTaskNo===null){
     // 新規追加
     if(TASKS.find(t=>t.no===no)){alert('No '+no+' はすでに存在します');return;}
     TASKS.push({no,name,group,category,tanto:'',due:'',state:'着手前',help:0,offset:null,items});
-    addBoxHistory('追加', no, name, 'タスク '+items.length+'件'+items.filter(it=>it.why).map(it=>' 「'+it.t+'」（理由：'+it.why+'）').join(''));
+    setGateMapEdit(no, newGm);
+    addBoxHistory('追加', no, name, 'タスク '+items.length+'件'+items.filter(it=>it.why).map(it=>' 「'+it.t+'」（理由：'+it.why+'）').join('')+(newGm?'、所要日程 '+gateMapLabel(newGm):''));
     // 全物件のpStatesに追加
     props.forEach(p=>{
       if(!pStates[p.id]) return;
@@ -2691,7 +2729,15 @@ function saveTaskEdit(){
       if(lostLinks && !confirm('削除するタスクに添付が'+lostLinks+'件あります。添付も削除されます。よいですか？')) return;
       const beforeBox = TASKS[idx];
       TASKS[idx]={...TASKS[idx],no,name,group,category,items};
-      const detail = describeBoxChange(beforeBox, TASKS[idx], oiList);
+      let detail = describeBoxChange(beforeBox, TASKS[idx], oiList);
+      // 対象ゲート・所要日程（番号を変えたら付け替える）
+      const oldGm = gateMapOf(oldNo);
+      if(no!==oldNo) delete gateMapEdits[oldNo];
+      setGateMapEdit(no, newGm);
+      if(gateMapLabel(oldGm)!==gateMapLabel(newGm)){
+        const g='所要日程 '+gateMapLabel(oldGm)+'→'+gateMapLabel(newGm);
+        detail = detail==='変更なし' ? g : detail+'、'+g;
+      }
       if(detail!=='変更なし') addBoxHistory('編集', no, name, detail);
       // 添付（全物件共通）を新しい位置へ移す
       const oldLinks = {};
@@ -2741,9 +2787,17 @@ function saveTaskEdit(){
     }
   }
   tasksEdited = true;
+  // 所要日程が変わったかもしれないので、計算で期日を出している物件の期日を出し直す
+  props.forEach(p=>calcDues(p.id));
   closeOv('taskEditDlgOv');
   renderTaskEditList();
   scheduleSave();
+}
+// テンプレートと同じ値なら変更の印を消す（テンプレートの更新が届くように）
+function setGateMapEdit(no, m){
+  const tpl = TASK_GATE_MAP[no]||null;
+  const same = (!m&&!tpl) || (m&&tpl&&m.gate===tpl.gate&&m.days===tpl.days);
+  if(same) delete gateMapEdits[no]; else gateMapEdits[no] = m;
 }
 
 function deleteTask(no){
@@ -2752,6 +2806,7 @@ function deleteTask(no){
   if(idx>=0){ addBoxHistory('削除', no, TASKS[idx].name, 'タスク '+TASKS[idx].items.length+'件'); TASKS.splice(idx,1); }
   // 同じ番号で新しく作ったボックスに古い添付が付かないよう、添付も消す
   Object.keys(taskLinks).forEach(k=>{ if(k.startsWith(no+'_')) delete taskLinks[k]; });
+  delete gateMapEdits[no];
   tasksEdited = true;
   renderTaskEditList();
   scheduleSave();
@@ -2781,6 +2836,7 @@ function saveData(){
     };
     if(tasksEdited) data.tasks = TASKS;
     if(boxHistory.length) data.boxHistory = boxHistory;
+    if(Object.keys(gateMapEdits).length) data.gateMapEdits = gateMapEdits;
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){console.warn('保存失敗:',e);}
 }
@@ -3071,6 +3127,7 @@ function loadData(){
     if(data.props) props.splice(0, props.length, ...data.props);
     if(data.nextPid) nextPid = data.nextPid;
     if(Array.isArray(data.boxHistory)) boxHistory = data.boxHistory;
+    if(data.gateMapEdits&&typeof data.gateMapEdits==='object') gateMapEdits = data.gateMapEdits;
     if(data.staffList) staffList.splice(0, staffList.length, ...data.staffList);
     if(data.taskLinks) Object.assign(taskLinks, data.taskLinks);
     if(data.tantoMap) Object.assign(tantoMap, data.tantoMap); removeRetiredStaff(data); normalizeStaff();
