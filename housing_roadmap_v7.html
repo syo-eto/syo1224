@@ -529,7 +529,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.6.3（2026-11-25）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.6.4（2026-11-26）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1426,13 +1426,15 @@ function renderTabs(){
     btn.onclick=()=>setCat(btn.dataset.cat);
   });
 }
-// ===== 開始予定・完了予定（物件×ボックス。入力できるのはそのボックスの担当者だけ） =====
+// ===== 開始予定・完了予定（物件×ボックス。入力できるのはそのボックスの担当者だけ。会議・打合せはだれでも） =====
 // 担当者：ボックスのカテゴリ（職種）の担当者。会議・打合せは物件の主担当者
 function boxTantoOf(pid,t){
   if(['会議','打合せ'].includes(t.category)){ const p=props.find(x=>x.id===pid); return (p&&p.tanto)||''; }
   return (tantoMap[pid]&&tantoMap[pid][t.category])||'';
 }
-function canEditPlan(pid,t){ const tn=boxTantoOf(pid,t); return !!(curUser && tn && tn===curUser); }
+// 会議・打合せの予定は、当面だれでも入力できる（利用者の指示 2026-11-26。主担当者が未設定の物件で入れる人がいなかったため）
+function isMeetingBox(t){ return ['会議','打合せ'].includes(t.category); }
+function canEditPlan(pid,t){ if(isMeetingBox(t)) return !!curUser; const tn=boxTantoOf(pid,t); return !!(curUser && tn && tn===curUser); }
 function planOf(pid,no,kind){ const st=pStates[pid]; const m=st&&(kind==='start'?st.planStart:st.planEnd); return (m&&m[no])||''; }
 function planCell(pid,t,kind){
   const v=planOf(pid,t.no,kind), cls='rc-plan rc-plan-'+kind;
@@ -1447,7 +1449,7 @@ function planCell(pid,t,kind){
 }
 function setPlan(pid,no,kind,el){
   const t=TASKS.find(x=>x.no===no);
-  if(!t||!canEditPlan(pid,t)||(pStates[pid].ts&&pStates[pid].ts[no]==='完了')){ alert('開始予定・完了予定を入力できるのは、このボックスの担当者だけです。'); el.value=planOf(pid,no,kind); return; }
+  if(!t||!canEditPlan(pid,t)||(pStates[pid].ts&&pStates[pid].ts[no]==='完了')){ alert('開始予定・完了予定を入力できるのは、このボックスの担当者だけです（会議・打合せはだれでも入力できます）。'); el.value=planOf(pid,no,kind); return; }
   const st=pStates[pid]; if(!st.planStart) st.planStart={}; if(!st.planEnd) st.planEnd={};
   const v=el.value||'';
   const other=kind==='start'?st.planEnd[no]:st.planStart[no];
@@ -2419,7 +2421,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.6.3';
+const APP_VERSION = '0.6.4';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う

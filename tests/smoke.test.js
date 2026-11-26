@@ -586,6 +586,16 @@ run('開始予定・完了予定：担当者だけが入力でき、保存・取
   wv.setCurUser('野内　早紀'); wv.render();
   if(row(kikaku).querySelector('.rc-plan input') || row(kikaku).querySelector('.rc-plan-start').textContent!=='12/01') throw new Error('担当でない人に入力欄が出る／表示が違う');
   if(!row(sakuzu).querySelector('.rc-plan-start input')) throw new Error('設計作図の担当者に入力欄が出ない');
+  // 会議・打合せは、主担当者でなくても入力できる（0.6.4）
+  const uchi = wv.eval('TASKS.find(t=>t.category==="打合せ").no');
+  if(!row(kaigi).querySelector('.rc-plan-start input') || !row(uchi).querySelector('.rc-plan-end input')) throw new Error('会議・打合せを主担当者以外が入力できない');
+  wv.setPlan(pid, kaigi, 'start', {value:'2026-12-03', classList:{toggle(){}}});
+  if(wv.eval('pStates['+pid+'].planStart['+kaigi+']')!=='2026-12-03') throw new Error('主担当者以外が会議の予定を入れられない');
+  // 主担当者が未設定の物件でも入力できる
+  wv.eval('props[0].tanto=""'); wv.render();
+  if(!row(kaigi).querySelector('.rc-plan-end input')) throw new Error('主担当者が未設定の物件で会議の予定を入力できない');
+  if(row(sakuzu).querySelector('.rc-plan-start input')===null) throw new Error('（確認）設計作図の担当者の入力欄');
+  wv.eval('props[0].tanto="江藤　奨"'); wv.render();
   // 保存して開き直しても残る
   wv.saveData();
   const saved = wv.localStorage.getItem('housing_roadmap_v7');
