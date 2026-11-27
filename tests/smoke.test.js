@@ -510,6 +510,28 @@ run('ホームのタブは左が個人ダッシュボード、右が全体ダッ
   if(!wv.document.getElementById('homePanel-me').classList.contains('on') || wv.document.getElementById('homePanel-all').classList.contains('on')) throw new Error('起動時に個人ダッシュボードが開かない');
   if(!wv.document.getElementById('homeTab-me').classList.contains('on')) throw new Error('個人ダッシュボードのタブが選ばれていない');
 });
+run('11/27 テンプレート：133 挨拶廻りの末尾にタスク、97 の補足メモ（0.7.2）', () => {
+  const V13 = w.eval('TEMPLATE_V13');
+  const full = i => Object.assign({c:false,f:false,h:false,hm:'',j:''}, i);
+  if(w.v6Hash(V13[133].old.map(full))!==V13[133].h) throw new Error('更新前の文言の印が合わない');
+  const T = w.eval('TASKS');
+  const b133 = T.find(t=>t.no===133), b97 = T.find(t=>t.no===97);
+  if(b133.items.length!==13 || b133.items[12].t!=='加工承諾の前にプレカット図を大工と確認した') throw new Error('133 のタスク');
+  if(!b97.items[1].n.startsWith('長期審査チェックシート https://')) throw new Error('97 の補足メモ');
+  const mk = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  const base = () => ({boxNoVer:12, props:[{id:1,name:'旧邸'}], nextPid:2,
+    pStates:{1:{ts:{'133':'進行中'}, done:{'133':Array.from({length:12},(_,i)=>i===11)}, fuyo:{}, help:{}, memo:{}, note:{}, overrideDue:{}}},
+    itemCheckDates:{'1_133_11':'2026-11-20'}});
+  const a = mk(base());
+  if(a.eval('pStates[1].done[133][11]')!==true || a.eval('itemCheckDates["1_133_11"]')!=='2026-11-20') throw new Error('未編集：チェックが残らない');
+  // 編集済みの一覧（133 が更新前のまま）にも足す
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS.map(tplBeforeV13)))');
+  if(tasks.find(t=>t.no===133).items.length!==12) throw new Error('更新前の一覧が作れない');
+  const b = mk(Object.assign(base(), {tasks}));
+  if(b.eval('TASKS').find(t=>t.no===133).items.length!==13) throw new Error('編集済み：一覧が新しくならない');
+  if(b.eval('pStates[1].done[133][11]')!==true) throw new Error('編集済み：チェックが残らない');
+});
 run('11/25 テンプレート：162 木工事検査の途中に増えたタスクに合わせてチェックを移す（0.6.3）', () => {
   const V12 = w.eval('TEMPLATE_V12');
   const full = i => Object.assign({c:false,f:false,h:false,hm:'',j:''}, i);
@@ -913,7 +935,7 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   if(box(102).group!=='着工後') throw new Error('11/24（2回目）：102 BELS申請のフェーズ');
   if([120,121,122,123,124,125,126,127,128].some(no=>box(no).group!=='着工後') || box(119).group!=='着工前工務業務' || box(129).group!=='着工前工務業務') throw new Error('11/24（夕方）：打合せ9ボックスのフェーズ');
   if(box(62).category!=='企画' || w3.eval('TASK_GATE_MAP[62].days')!==73 || w3.eval('TASK_GATE_MAP[185].days')!==66) throw new Error('11/24：62・185 の担当・所要日程');
-  if(box(18).items.length!==40 || box(38).items.length!==147 || box(56).items.length!==2 || box(83).items.length!==30 || box(85).items.length!==130 || box(115).items.length!==11 || box(132).items.length!==5 || box(133).items.length!==12) throw new Error('11/24 のテンプレートのタスク数');
+  if(box(18).items.length!==40 || box(38).items.length!==147 || box(56).items.length!==2 || box(83).items.length!==30 || box(85).items.length!==130 || box(115).items.length!==11 || box(132).items.length!==5 || box(133).items.length!==13) throw new Error('11/24 のテンプレートのタスク数');
   if(box(176).name!=='引渡' || box(176).items.length!==1 || box(176).items[0].t!=='お花の受け取り') throw new Error('176 引渡の中身');
   const gates = Object.fromEntries(w3.eval('GATES').map(g=>[g.name,g.no]));
   ['上棟','木完','工務社検','引渡'].forEach(n=>{ if(box(gates[n]).name!==n) throw new Error('ゲート「'+n+'」の番号がずれた'); });
