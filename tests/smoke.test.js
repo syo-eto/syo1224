@@ -510,6 +510,48 @@ run('ホームのタブは左が個人ダッシュボード、右が全体ダッ
   if(!wv.document.getElementById('homePanel-me').classList.contains('on') || wv.document.getElementById('homePanel-all').classList.contains('on')) throw new Error('起動時に個人ダッシュボードが開かない');
   if(!wv.document.getElementById('homeTab-me').classList.contains('on')) throw new Error('個人ダッシュボードのタブが選ばれていない');
 });
+run('個人ダッシュボードの期日超過を押すと、物件ごとに期日超過のボックスが出る（0.8.0）', () => {
+  const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  const dv = wv.document;
+  ['超過A邸','超過B邸','超過なし邸'].forEach(n=>{ wv.openAddDlg(); dv.getElementById('fName').value=n; wv.addProperty(); });
+  const id = n => wv.eval('props.find(p=>p.name==="'+n+'").id');
+  const [a,b,c] = ['超過A邸','超過B邸','超過なし邸'].map(id);
+  const kikaku = wv.eval('TASKS.filter(t=>t.category==="企画").map(t=>t.no)');
+  const sakuzu = wv.eval('TASKS.find(t=>t.category==="設計作図").no');
+  [a,b,c].forEach(p=>wv.eval('tantoMap['+p+']={"企画":"江藤　奨","設計作図":"野内　早紀"}'));
+  // A：企画2件が超過（1件は完了で除く）＋設計作図（担当外）が超過。B：企画1件が超過。C：期日が先
+  wv.eval('pStates['+a+'].overrideDue={'+kikaku[0]+':"2020-01-05",'+kikaku[1]+':"2020-01-02",'+kikaku[2]+':"2020-01-01",'+sakuzu+':"2020-01-01"}; pStates['+a+'].ts['+kikaku[2]+']="完了"');
+  wv.eval('pStates['+b+'].overrideDue={'+kikaku[3]+':"2020-02-01"}');
+  wv.eval('pStates['+c+'].overrideDue={'+kikaku[0]+':"2099-01-01"}');
+  wv.setCurUser('江藤　奨'); wv.switchHomeTab('me');
+  const tile = [...dv.querySelectorAll('#homePanel-me .mt-sum-item')].find(el=>el.textContent.includes('期日超過'));
+  if(!tile || !tile.classList.contains('mt-sum-click') || tile.querySelector('.mt-sum-val').textContent!=='3') throw new Error('期日超過のタイル '+(tile&&tile.outerHTML));
+  tile.click();
+  if(!dv.getElementById('overdueOv').classList.contains('open')) throw new Error('ポップアップが開かない');
+  const hdrs = [...dv.querySelectorAll('#overdueListBody .od-prop-hdr')].map(h=>h.textContent);
+  if(hdrs.length!==2 || !hdrs.some(h=>h.includes('超過A邸')&&h.includes('2件')) || !hdrs.some(h=>h.includes('超過B邸')&&h.includes('1件'))) throw new Error('物件ごとの見出し '+JSON.stringify(hdrs));
+  const items = [...dv.querySelectorAll('#overdueListBody .list-item')];
+  if(items.length!==3) throw new Error('ボックスの数 '+items.length);
+  // 期日の古い順（A：kikaku[1] 1/2 → kikaku[0] 1/5）
+  if(!items[0].querySelector('.list-item-no').textContent.includes(String(kikaku[1]))) throw new Error('並び順');
+  if(!dv.getElementById('overdueListSub').textContent.includes('2物件・3件')) throw new Error('件数の表示 '+dv.getElementById('overdueListSub').textContent);
+  // 開くと、その場でチェック画面（物件名付き）
+  items[0].querySelector('.open-btn').click();
+  if(dv.getElementById('overdueOv').classList.contains('open') || !dv.getElementById('modalBg').classList.contains('open')) throw new Error('チェック画面が開かない');
+  if(!dv.getElementById('mMeta').textContent.includes('超過A邸')) throw new Error('チェック画面に物件名が無い');
+  wv.closeModal();
+  // 超過が0件ならタイルは押せない
+  wv.setCurUser('野内　早紀'); wv.switchHomeTab('me');
+  const tile2 = [...dv.querySelectorAll('#homePanel-me .mt-sum-item')].find(el=>el.textContent.includes('期日超過'));
+  if(tile2.querySelector('.mt-sum-val').textContent!=='1') throw new Error('野内さんの超過数');
+  // 物件一覧の期日超過（物件ごと）も、アプリの期日で出る（以前は空だった）
+  wv.openOverdue(a);
+  if(dv.querySelectorAll('#overdueListBody .list-item').length!==3 || dv.querySelector('#overdueListBody .od-prop-hdr')) throw new Error('物件ごとの期日超過一覧');
+  wv.closeOv('overdueOv');
+  wv.openOverdue(c);
+  if(!dv.querySelector('#overdueListBody .list-empty')) throw new Error('超過なしの表示');
+});
 run('11/27 テンプレート：133 挨拶廻りの末尾にタスク、97 の補足メモ（0.7.2）', () => {
   const V13 = w.eval('TEMPLATE_V13');
   const full = i => Object.assign({c:false,f:false,h:false,hm:'',j:''}, i);
