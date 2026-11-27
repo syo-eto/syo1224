@@ -534,7 +534,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.3（2026-11-27）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.4（2026-11-27）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1971,7 +1971,7 @@ function renderOverdueList(groups, sub, fromHome, onBack, reopen, kind){
   if(!total){ body.insertAdjacentHTML('beforeend','<div class="list-empty">'+K.name+'のボックスはありません</div>'); openOv('overdueOv'); return; }
   groups.forEach(g=>{
     if(!g.list.length) return;
-    const pid=g.prop.id, ps2=pStates[pid]||{ts:{}};
+    const pid=g.prop.id;
     if(groups.length>1){
       const h=document.createElement('div'); h.className='od-prop-hdr';
       h.innerHTML='<span class="od-prop-name">🏠 '+g.prop.name+'</span><span class="od-prop-count" style="color:'+K.color+'">'+g.list.length+'件</span>';
@@ -1979,15 +1979,12 @@ function renderOverdueList(groups, sub, fromHome, onBack, reopen, kind){
     }
     g.list.forEach(t=>{
       const due=myTaskDue(pid,t);
-      const grpCls='g'+(t.group||'').replace(/\s/g,'');
-      const st=(ps2.ts&&ps2.ts[t.no])||'着手前';
+      // 状態・フェーズは出さない（利用者の指示 0.8.4）
       const div=document.createElement('div');div.className='list-item';
       div.innerHTML='<div class="list-item-no">No.'+t.no+'</div>'
         +'<div class="list-item-name">'+t.name+'</div>'
         +'<div class="list-item-meta">'
-        +'<span style="font-size:13px;color:'+K.color+';font-weight:600">📅 '+due+'（'+dueDiffLabel(due)+'）</span>'
-        +'<span class="badge s'+st+'">'+st+'</span>'
-        +(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'')+'</div>';
+        +'<span style="font-size:13px;color:'+K.color+';font-weight:600">📅 '+due+'（'+dueDiffLabel(due)+'）</span></div>';
       const btn=document.createElement('button');btn.className='open-btn';btn.textContent='このボックスを開く →';
       btn.onclick=fromHome
         ?()=>{closeOv('overdueOv');openMyTaskModal(pid,t.no,reopen);}
@@ -2537,7 +2534,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.8.3';
+const APP_VERSION = '0.8.4';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う

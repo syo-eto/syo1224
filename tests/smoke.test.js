@@ -604,6 +604,7 @@ run('個人ダッシュボードの7日以内も、物件 → ボックス → �
   ra.click();
   const items = [...dv.querySelectorAll('#overdueListBody .list-item')];
   if(items.length!==2 || !items[0].textContent.includes('今日') || !items[1].textContent.includes('あと3日')) throw new Error('ボックス '+items.map(i=>i.textContent).join(' / '));
+  if(items.some(i=>i.querySelector('.badge'))) throw new Error('一覧に状態・フェーズが出ている（0.8.4）');
   items[1].querySelector('.open-btn').click();
   dv.querySelector('#mMeta .mt-modal-back').click();
   if(!dv.getElementById('overdueOv').classList.contains('open') || dv.querySelectorAll('#overdueListBody .list-item').length!==2 || !dv.getElementById('overdueListTitle').textContent.includes('7日以内')) throw new Error('戻ると7日以内の一覧に戻らない');
