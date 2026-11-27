@@ -48,7 +48,10 @@ run('物件を開く(ロードマップ)', () => { w.openProp(w.eval('props[0].i
 run('スマートフォン用：ロードマップの行に列の印（カード表示用）', () => {
   const rows = [...d.querySelectorAll('#tbody tr')];
   if(rows.length!==w.eval('TASKS.length')) throw new Error('行数 '+rows.length);
-  ['rc-no','rc-name','rc-grp','rc-cat','rc-tanto','rc-due','rc-kb','rc-st'].forEach(c=>{ if(!rows[0].querySelector('.'+c)) throw new Error(c+'が無い'); });
+  ['rc-no','rc-name','rc-cat','rc-tanto','rc-due','rc-kb','rc-st'].forEach(c=>{ if(!rows[0].querySelector('.'+c)) throw new Error(c+'が無い'); });
+  // ロードマップの表にフェーズは出さない（0.8.5、利用者の指示）
+  if(rows[0].querySelector('.rc-grp') || [...rows[0].closest('table').querySelectorAll('thead th')].some(th=>th.textContent==='フェーズ')) throw new Error('ロードマップにフェーズの列がある');
+  if(rows[0].children.length!==rows[0].closest('table').querySelectorAll('thead th').length) throw new Error('見出しと列の数が合わない');
   if(!rows[0].querySelector('.rc-tanto').classList.contains('rc-none')) throw new Error('未設定の担当に rc-none が無い');
   if(!d.querySelector('#page-rm table.rc-tbl')) throw new Error('ロードマップの表に rc-tbl が無い');
 });

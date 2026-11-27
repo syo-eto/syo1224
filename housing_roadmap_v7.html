@@ -534,7 +534,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.4（2026-11-27）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.5（2026-11-27）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -629,7 +629,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   </div>
   <div class="tbl-wrap">
     <table class="main rc-tbl">
-      <thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>フェーズ</th><th>カテゴリ</th><th>担当</th><th>開始予定</th><th>完了予定</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>
+      <thead><tr><th style="width:36px">No</th><th>ボックス名</th><th>カテゴリ</th><th>担当</th><th>開始予定</th><th>完了予定</th><th>期日</th><th>完了日</th><th>状態</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table>
   </div>
@@ -1570,11 +1570,10 @@ function render(){
   else if(so==='group')list=list.slice().sort((a,b)=>(GORDER[a.group]??9)-(GORDER[b.group]??9)||TASKS.indexOf(a)-TASKS.indexOf(b));
   else list=list.slice().sort((a,b)=>TASKS.indexOf(a)-TASKS.indexOf(b));
   const tbody=document.getElementById('tbody');
-  if(!list.length){tbody.innerHTML='<tr><td colspan="10" class="empty">該当なし</td></tr>';return;}
+  if(!list.length){tbody.innerHTML='<tr><td colspan="9" class="empty">該当なし</td></tr>';return;}
   tbody.innerHTML=list.map(t=>{
     const st=ts[t.no],prog=calcProg(t.no);
     const hasHelp=help[t.no]&&help[t.no].some(Boolean);
-    const grpCls='g'+(t.group||'').replace(/\s/g,'');
     const catCls='c'+(t.category||'').replace(/\s/g,'');
     const kb=getKanryobi(t.no);
     // 全タスクが不要のボックス：状態は「完了」のまま、表示だけ「不要」
@@ -1587,7 +1586,6 @@ function render(){
       +'<span class="tlink-top">'+(hasHelp?'<span class="help-dot"></span>':'')+'<span class="tname-txt'+(isBoxOverdue(curPid,t.no)?' over':'')+'">'+t.name+'</span>'+(prog?'<span class="cnt">'+prog.doneN+'/'+prog.activeTotal+'</span>':'')+'</span>'
       +(kb!=='―'?'<span class="kanryobi-txt">✔ '+kb+'</span>':'')
       +'</span></td>'
-      +'<td class="rc-grp">'+(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'―')+'</td>'
       +'<td class="rc-cat">'+(t.category?'<span class="badge '+catCls+'">'+t.category+'</span>':'―')+'</td>'
       +'<td class="rc-tanto'+(tanto==='―'?' rc-none':'')+'" style="font-size:13px;color:var(--color-text-secondary,#666)">'+tanto+'</td>'
       +planCell(curPid,t,'start')+planCell(curPid,t,'end')
@@ -2534,7 +2532,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.8.4';
+const APP_VERSION = '0.8.5';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
