@@ -534,7 +534,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.1（2026-11-27）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.2（2026-11-27）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1669,7 +1669,7 @@ function openMyTaskModal(pid,no,back){
   modalFromHome=true;
   const p=props.find(x=>x.id===pid);
   document.getElementById('mMeta').insertAdjacentHTML('afterbegin',
-    (back?'<button class="mt-modal-back" onclick="backFromModal()" title="期日超過ボックスの一覧に戻る">← 1つ前に戻る</button>':'')
+    (back?'<button class="mt-modal-back" onclick="backFromModal()" title="期日超過ボックスの一覧に戻る">← 戻る</button>':'')
     +'<button class="mt-modal-prop" onclick="openPropFromModal('+pid+')" title="この物件のロードマップを開く">🏠 '+p.name+' ›</button>');
   modalBack=back||null;
 }
@@ -2521,7 +2521,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.8.1';
+const APP_VERSION = '0.8.2';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
