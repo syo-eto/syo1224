@@ -16,7 +16,7 @@ var MAX_HOURS_PER_DAY = 24;
 // シート名と見出し
 var SHEETS = {
   sites:     { name: '現場',       head: ['現場ID', '現場名', '種別（新築／リノベ）', '状態（着工前／進行中／完工）', 'メモ'] },
-  workers:   { name: '作業員',     head: ['作業員ID', '氏名', '有効（TRUE／FALSE）', '暗証番号（4桁・任意）', '時給（円）'] },
+  workers:   { name: '作業員',     head: ['作業員ID', '氏名', '有効（TRUE／FALSE）', '暗証番号（4桁・任意）', '時給（円）', 'メールアドレス（会社）'] },
   works:     { name: '作業内容',   head: ['作業ID', '種別（新築／リノベ）', '工種', '作業内容', '単位（数量なしは ―）', '並び順', 'ANDPAD の工程名'] },
   materials: { name: '材料',       head: ['材料ID', '材料名', '規格', '単位', '単価（円）', 'いつからの単価か', '有効（TRUE／FALSE）', '使う作業（作業内容を「、」で区切る。空ならすべて）'] },
   reports:   { name: '日報',       head: ['日報ID', '日付', '作業員ID', '氏名', '最初の送信', '最後の送信', '合計時間'] },
@@ -111,11 +111,8 @@ function getMaster() {
   }).map(function (s) {
     return { id: String(s['現場ID']), name: String(s['現場名']), kind: kindOf_(s['種別（新築／リノベ）']) };
   });
-  var workers = readObjects_(SHEETS.workers).filter(function (w) {
-    return w['作業員ID'] && isOn_(w['有効（TRUE／FALSE）']);
-  }).map(function (w) {
-    return { id: String(w['作業員ID']), name: String(w['氏名']), hasPin: String(w['暗証番号（4桁・任意）']).trim() !== '' };
-  });
+  var email = currentEmail_();
+  var me = findWorkerByEmail_(email);
   var works = readObjects_(SHEETS.works).filter(function (w) { return w['作業ID'] && w['作業内容']; })
     .map(function (w) {
       return { id: String(w['作業ID']), kind: kindOf_(w['種別（新築／リノベ）']), kousyu: String(w['工種'] || '大工工事'),
@@ -127,12 +124,12 @@ function getMaster() {
     var forWorks = String(m['使う作業（作業内容を「、」で区切る。空ならすべて）'] || '').split(/[、,，]/).map(function (x) { return x.trim(); }).filter(String);
     return { id: String(m['材料ID']), name: matLabel_(m['材料名'], m['規格']), unit: String(m['単位'] || ''), works: forWorks };
   });
-  return { version: APP_VERSION, today: today_(), sites: sites, workers: workers, works: works, materials: materials };
+  return { version: APP_VERSION, today: today_(), email: email, me: me, sites: sites, works: works, materials: materials };
 }
 
 /** その日の自分の日報（あれば）。当日に送ったものだけ直せる。 */
-function loadReport(workerId, pin, date) {
-  var worker = checkWorker_(workerId, pin);
+function loadReport(date) {
+  var worker = currentWorker_();
   date = normDate_(date);
   var rep = findReport_(worker.id, date);
   if (!rep) return { exists: false, editable: true };
@@ -149,7 +146,7 @@ function loadReport(workerId, pin, date) {
 }
 
 /**
- * 日報を受け取る。payload = {workerId, pin, date, lines:[{siteId, workId, hours, materialId（材料ID／__other__／__none__）, materialText, qty}]}
+ * 日報を受け取る。送った人はログイン中の会社アカウントで決まる。payload = {date, lines:[{siteId, workId, hours, materialId（材料ID／__other__／__none__）, materialText, qty}]}
  * 同じ人・同じ日付の日報は、最初に送った日のうちなら上書きできる。
  */
 function submitReport(payload) {
@@ -157,7 +154,7 @@ function submitReport(payload) {
   lock.waitLock(20000);
   try {
     var master = getMasterFull_();
-    var worker = checkWorker_(payload.workerId, payload.pin);
+    var worker = currentWorker_();
     var clean = validateReport_(payload, master, today_());
     var existing = findReport_(worker.id, clean.date);
     var now = nowText_();
@@ -241,16 +238,32 @@ function getMasterFull_() {
   return { sitesById: idx(m.sites), worksById: idx(m.works), materialsById: idx(m.materials) };
 }
 
-function checkWorker_(workerId, pin) {
+/** ログイン中の会社アカウントのアドレス（「kokorosya.co.jp 内の全員」で公開したときに取れる）。 */
+function currentEmail_() {
+  var e = '';
+  try { e = Session.getActiveUser().getEmail(); } catch (err) { e = ''; }
+  return String(e || '').trim().toLowerCase();
+}
+
+/** 「作業員」シートの F列（メールアドレス）から本人を探す。有効でない人・見つからないときは null。 */
+function findWorkerByEmail_(email) {
+  if (!email) return null;
   var rows = readObjects_(SHEETS.workers);
   for (var i = 0; i < rows.length; i++) {
     var w = rows[i];
-    if (String(w['作業員ID']) !== String(workerId) || !isOn_(w['有効（TRUE／FALSE）'])) continue;
-    var want = String(w['暗証番号（4桁・任意）']).trim();
-    if (want && String(pin || '').trim() !== want) throw new Error('暗証番号が違います。');
-    return { id: String(w['作業員ID']), name: String(w['氏名']) };
+    if (String(w['メールアドレス（会社）'] || '').trim().toLowerCase() === email && w['作業員ID'] && isOn_(w['有効（TRUE／FALSE）'])) {
+      return { id: String(w['作業員ID']), name: String(w['氏名']) };
+    }
   }
-  throw new Error('名前を選んでください。');
+  return null;
+}
+
+function currentWorker_() {
+  var email = currentEmail_();
+  if (!email) throw new Error('会社の Google アカウントでログインしてから開いてください。');
+  var w = findWorkerByEmail_(email);
+  if (!w) throw new Error(email + ' は作業員に登録されていません。管理者に連絡してください。');
+  return w;
 }
 
 function findReport_(workerId, date) {

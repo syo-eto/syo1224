@@ -43,25 +43,11 @@ button{font:inherit;cursor:pointer}
 <body>
 <header>
   <h1>大工日報</h1>
-  <span class="who hidden" id="whoBox"><b id="whoName"></b><button id="whoChange" type="button">切替</button></span>
+  <span class="who hidden" id="whoBox"><b id="whoName"></b></span>
 </header>
 <main>
   <div class="msg" id="msg"></div>
   <div class="loading" id="loading">読み込み中…</div>
-
-  <section id="pickView" class="hidden">
-    <div class="card">
-      <h2>入力するのは誰ですか？</h2>
-      <label class="f" for="pickWorker">名前</label>
-      <select id="pickWorker"></select>
-      <div id="pinBox" class="hidden">
-        <label class="f" for="pickPin">暗証番号</label>
-        <input id="pickPin" type="password" inputmode="numeric" maxlength="8" autocomplete="off">
-      </div>
-      <button class="btn pri big" id="pickOk" type="button">決定</button>
-      <p class="note">次からはこの端末で自動で選ばれます。</p>
-    </div>
-  </section>
 
   <section id="formView" class="hidden">
     <div class="card">
@@ -91,13 +77,12 @@ button{font:inherit;cursor:pointer}
 <script>
 (function () {
   'use strict';
-  var WHO_KEY = 'daiku_nippo_who';
   var DRAFT_PREFIX = 'daiku_nippo_draft_';
   var MAX_HOURS = 12;
   var MAT_OTHER = '__other__', MAT_NONE = '__none__';
 
   var master = null;
-  var who = null;          // {workerId, pin}
+  var who = null;          // {id, name}（ログイン中の会社アカウントで決まる）
   var state = null;        // {date, lines:[], materials:[]}
   var locked = false;      // 直せない日報
   var $ = function (id) { return document.getElementById(id); };
@@ -106,7 +91,7 @@ button{font:inherit;cursor:pointer}
   function store(k, v) { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function load(k) { try { var s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
   function flash(t, err) { var m = $('msg'); m.textContent = t || ''; m.className = 'msg' + (err ? ' err' : ''); if (t) window.scrollTo(0, 0); }
-  function show(id) { ['loading', 'pickView', 'formView', 'doneView'].forEach(function (v) { $(v).classList.toggle('hidden', v !== id); }); }
+  function show(id) { ['loading', 'formView', 'doneView'].forEach(function (v) { $(v).classList.toggle('hidden', v !== id); }); }
 
   function call(fn, args, ok, ng) {
     var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) {
@@ -118,44 +103,13 @@ button{font:inherit;cursor:pointer}
 
   function siteById(id) { return master.sites.filter(function (s) { return s.id === id; })[0]; }
   function workById(id) { return master.works.filter(function (w) { return w.id === id; })[0]; }
-  function workerById(id) { return master.workers.filter(function (w) { return w.id === id; })[0]; }
-  function draftKey() { return DRAFT_PREFIX + who.workerId + '_' + state.date; }
+  function draftKey() { return DRAFT_PREFIX + who.id + '_' + state.date; }
   function saveDraft() { if (who && state && !locked) store(draftKey(), { lines: state.lines }); }
   function emptyLine(prev) { return { siteId: prev ? prev.siteId : (master.sites.length === 1 ? master.sites[0].id : ''), workId: '', hours: '', materialId: '', materialText: '', qty: '' }; }
 
-  /* ── 入力者 ── */
-  function startPick() {
-    var sel = $('pickWorker');
-    sel.innerHTML = '<option value="">選んでください</option>' + master.workers.map(function (w) {
-      return '<option value="' + esc(w.id) + '">' + esc(w.name) + '</option>';
-    }).join('');
-    sel.onchange = function () { var w = workerById(sel.value); $('pinBox').classList.toggle('hidden', !(w && w.hasPin)); };
-    $('pickPin').value = '';
-    $('pinBox').classList.add('hidden');
-    $('whoBox').classList.add('hidden');
-    show('pickView');
-  }
-  $('pickOk').onclick = function () {
-    var id = $('pickWorker').value;
-    if (!id) { flash('名前を選んでください。', true); return; }
-    var w = workerById(id);
-    var pin = w.hasPin ? $('pickPin').value.trim() : '';
-    if (w.hasPin && !pin) { flash('暗証番号を入れてください。', true); return; }
-    $('pickOk').disabled = true;
-    call('loadReport', [id, pin, master.today], function () {
-      $('pickOk').disabled = false;
-      who = { workerId: id, pin: pin };
-      store(WHO_KEY, who);
-      flash('');
-      startForm(master.today);
-    }, function (t) { $('pickOk').disabled = false; flash(t, true); });
-  };
-  $('whoChange').onclick = function () { store(WHO_KEY, null); who = null; flash(''); startPick(); };
-
   /* ── 日報の入力 ── */
   function startForm(date) {
-    var w = workerById(who.workerId);
-    $('whoName').textContent = w ? w.name : '';
+    $('whoName').textContent = who.name;
     $('whoBox').classList.remove('hidden');
     $('date').max = master.today;
     $('date').value = date;
@@ -167,7 +121,7 @@ button{font:inherit;cursor:pointer}
     state = { date: date, lines: [] };
     locked = false;
     $('dateNote').textContent = '';
-    var draft = load(DRAFT_PREFIX + who.workerId + '_' + date);
+    var draft = load(DRAFT_PREFIX + who.id + '_' + date);
     if (draft && draft.lines && draft.lines.length) {
       state.lines = draft.lines;
       $('dateNote').textContent = '送る前の入力を戻しました。';
@@ -176,7 +130,7 @@ button{font:inherit;cursor:pointer}
     }
     state.lines = [emptyLine()];
     render();
-    call('loadReport', [who.workerId, who.pin, date], function (r) {
+    call('loadReport', [date], function (r) {
       if (!r || !r.exists || state.date !== date) return;
       state.lines = r.lines.length ? r.lines : [emptyLine()];
       locked = !r.editable;
@@ -280,7 +234,7 @@ button{font:inherit;cursor:pointer}
     if (!window.confirm(state.date + ' の日報を送ります（' + state.lines.length + '件、合計 ' + total + ' 時間）。')) return;
     $('send').disabled = true; $('send').textContent = '送信中…';
     var payload = {
-      workerId: who.workerId, pin: who.pin, date: state.date,
+      date: state.date,
       lines: state.lines.map(function (l) { return { siteId: l.siteId, workId: l.workId, hours: Number(l.hours), materialId: l.materialId || '', materialText: l.materialText || '', qty: l.qty === '' ? '' : Number(l.qty) }; })
     };
     call('submitReport', [payload], function (r) {
@@ -310,13 +264,20 @@ button{font:inherit;cursor:pointer}
   call('getMaster', [], function (m) {
     clearTimeout(slow);
     master = m;
-    if (!m.workers.length || !m.sites.length || !m.works.length) {
+    if (!m.me) {
       show('');
-      flash('まだ使える状態ではありません（作業員・進行中の現場・作業内容を管理者が登録してください）。', true);
+      flash(m.email
+        ? m.email + ' は作業員に登録されていません。管理者に、作業員シートへのアドレスの登録を頼んでください。'
+        : '会社の Google アカウント（@kokorosya.co.jp）でログインしてから開いてください。', true);
       return;
     }
-    who = load(WHO_KEY);
-    if (!who || !workerById(who.workerId)) startPick(); else startForm(m.today);
+    if (!m.sites.length || !m.works.length) {
+      show('');
+      flash('まだ使える状態ではありません（進行中の現場・作業内容を管理者が登録してください）。', true);
+      return;
+    }
+    who = m.me;
+    startForm(m.today);
   }, function (t) { clearTimeout(slow); show(''); flash('読み込めませんでした：' + t, true); });
 })();
 </script>

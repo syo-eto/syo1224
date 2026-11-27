@@ -16,6 +16,7 @@ function jstParts(d) {
   return p;
 }
 let fakeNow = null;   // テストで「今」をずらす
+let currentEmail = '';   // 画面を開いた人の会社アカウント（Session.getActiveUser）
 function makeGas() {
   const sheets = {};
   const RealDate = Date;
@@ -50,6 +51,7 @@ function makeGas() {
     Date: FakeDate,
     SpreadsheetApp: {getActiveSpreadsheet: () => ss},
     LockService: {getScriptLock: () => ({waitLock() {}, releaseLock() {}})},
+    Session: {getActiveUser: () => ({getEmail: () => currentEmail})},
     Utilities: {formatDate: (d, tz, fmt) => {
       const p = jstParts(d);
       return fmt.replace('yyyy', p.year).replace('MM', p.month).replace('dd', p.day).replace('HH', p.hour).replace('mm', p.minute).replace('ss', p.second);
@@ -107,7 +109,7 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
     assert(obj(sheets['作業内容']).length === 54, '2回目で増えた');
   });
   // 管理者が登録する
-  sheets['作業員'].data.push(['W01', '山田 太郎', 'TRUE', '', 2500], ['W02', '佐藤 次郎', 'TRUE', '1234', 2800], ['W03', '退職 者', 'FALSE', '', 2000]);
+  sheets['作業員'].data.push(['W01', '山田 太郎', 'TRUE', '', 2500, 'yamada@kokorosya.co.jp'], ['W02', '佐藤 次郎', 'TRUE', '', 2800, 'sato@kokorosya.co.jp'], ['W03', '退職 者', 'FALSE', '', 2000, 'old@kokorosya.co.jp']);
   sheets['現場'].data.push(['S01', '甲様邸', '新築', '進行中', ''], ['S02', '乙様邸', 'リノベ', '進行中', ''], ['S03', '丙様邸', '新築', '完工', '']);
   sheets['材料'].data.push(['M01', '無垢オーク', '15mm', 'ケース', 9800, '2026-11-01', 'TRUE', '床張り（フローリング）、フロア張り'],
                           ['M02', 'フロア釘', '38mm', '箱', 1200, '2026-11-01', 'TRUE', ''],
@@ -116,12 +118,18 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
   await run('入力画面の一覧：進行中の現場だけ・有効な人だけ・時給と暗証番号は出さない', () => {
     const m = ctx.getMaster();
     assert(m.sites.map(s => s.id).join() === 'S01,S02', 'sites ' + m.sites.map(s => s.id));
-    assert(m.workers.map(w => w.id).join() === 'W01,W02', 'workers');
+    assert(!m.workers, '作業員の一覧を画面に渡している');
+    assert(m.me === null, 'ログインしていないのに本人が決まった');
+    currentEmail = 'Yamada@Kokorosya.co.jp';
+    const m2 = ctx.getMaster();
+    assert(m2.me && m2.me.id === 'W01' && m2.me.name === '山田 太郎', 'アドレスで本人が決まらない ' + JSON.stringify(m2.me));
+    currentEmail = 'old@kokorosya.co.jp';
+    assert(ctx.getMaster().me === null, '無効の人が本人になった');
+    currentEmail = '';
     const json = JSON.stringify(m);
-    assert(!json.includes('2500') && !json.includes('2800') && !json.includes('1234'), '時給か暗証番号が入っている');
+    assert(!json.includes('2500') && !json.includes('2800'), '時給が入っている');
     assert(!json.includes('9800') && !json.includes('1200'), '単価が入っている');
     assert(m.materials.map(x => x.name).join() === '無垢オーク 15mm,フロア釘 38mm', '材料 ' + m.materials.map(x => x.name));
-    assert(m.workers[1].hasPin === true && m.workers[0].hasPin === false, 'hasPin');
     assert(m.works.length === 54, 'works');
   });
 
@@ -133,21 +141,25 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
   });
 
   // ── 画面 ──
+  await run('ログインしていないと、会社のアカウントでログインするよう案内が出る', async () => {
+    currentEmail = '';
+    const wx = openPage(gas); await tick(); await tick();
+    assert(wx.document.getElementById('msg').textContent.includes('ログインしてから'), wx.document.getElementById('msg').textContent);
+    assert(wx.document.getElementById('formView').classList.contains('hidden'), '入力画面が出た');
+  });
+  await run('作業員に登録されていないアカウントでは入れない', async () => {
+    currentEmail = 'someone@kokorosya.co.jp';
+    const wx = openPage(gas); await tick(); await tick();
+    assert(wx.document.getElementById('msg').textContent.includes('someone@kokorosya.co.jp は作業員に登録されていません'), wx.document.getElementById('msg').textContent);
+    let m = ''; try { ctx.submitReport({date: TODAY, lines: [{siteId: 'S01', workId: 'N22', hours: 1}]}); } catch (e) { m = e.message; }
+    assert(m.includes('登録されていません'), 'サーバーが受け付けた: ' + m);
+  });
+  currentEmail = 'yamada@kokorosya.co.jp';
   let w = openPage(gas), d = w.document;
   await tick(); await tick();
-  await run('起動すると名前を選ぶ画面', () => { assert(!d.getElementById('pickView').classList.contains('hidden'), '出ない'); });
-  await run('暗証番号のある人は、違う番号だと進めない', async () => {
-    setVal(w, d.getElementById('pickWorker'), 'W02');
-    assert(!d.getElementById('pinBox').classList.contains('hidden'), '暗証番号の欄が出ない');
-    d.getElementById('pickPin').value = '9999';
-    d.getElementById('pickOk').click(); await tick(); await tick();
-    assert(d.getElementById('msg').textContent.includes('暗証番号が違います'), d.getElementById('msg').textContent);
-    assert(d.getElementById('formView').classList.contains('hidden'), '進んでしまった');
-  });
-  await run('名前を選ぶと入力画面（日付は今日）', async () => {
-    setVal(w, d.getElementById('pickWorker'), 'W01');
-    d.getElementById('pickOk').click(); await tick(); await tick();
-    assert(!d.getElementById('formView').classList.contains('hidden'), '入力画面が出ない');
+  await run('登録されたアカウントで開くと、名前を選ばずに入力画面（日付は今日、名前が出る）', () => {
+    assert(!d.getElementById('formView').classList.contains('hidden'), '入力画面が出ない: ' + d.getElementById('msg').textContent);
+    assert(!d.getElementById('pickView'), '名前を選ぶ画面が残っている');
     assert(d.getElementById('date').value === TODAY, d.getElementById('date').value);
     assert(d.getElementById('whoName').textContent === '山田 太郎', 'name');
   });
@@ -241,23 +253,26 @@ const setVal = (w, el, v, ev = 'change') => { el.value = v; el.dispatchEvent(new
   await run('別の日に送った日報は直せない（画面も送信できない）', async () => {
     const rep = sheets['日報'].data[1];
     rep[4] = new ctx.Date(YESTERDAY + 'T09:00:00+09:00');
-    const r = ctx.loadReport('W01', '', TODAY);
+    const r = ctx.loadReport(TODAY);
     assert(r.exists && r.editable === false, JSON.stringify(r));
-    const w3 = openPage(gas, {daiku_nippo_who: JSON.stringify({workerId: 'W01', pin: ''})}); await tick(); await tick(); await tick();
+    const w3 = openPage(gas); await tick(); await tick(); await tick();
     assert(w3.document.getElementById('send').disabled, '送信ボタンが押せる');
     assert(w3.document.getElementById('dateNote').textContent.includes('送信済み'), 'お知らせ');
-    let msg = ''; try { ctx.submitReport({workerId: 'W01', pin: '', date: TODAY, lines: [{siteId: 'S01', workId: 'N22', hours: 1, qty: ''}]}); } catch (e) { msg = e.message; }
+    let msg = ''; try { ctx.submitReport({date: TODAY, lines: [{siteId: 'S01', workId: 'N22', hours: 1, qty: ''}]}); } catch (e) { msg = e.message; }
     assert(msg.includes('送信済み'), '上書きできてしまう: ' + msg);
   });
   await run('前日の分もあとから送れる', () => {
-    const r = ctx.submitReport({workerId: 'W02', pin: '1234', date: YESTERDAY, lines: [{siteId: 'S01', workId: 'N03', materialId: 'M02', hours: 8, qty: 40}]});
+    currentEmail = 'sato@kokorosya.co.jp';
+    const r = ctx.submitReport({date: YESTERDAY, lines: [{siteId: 'S01', workId: 'N03', materialId: 'M02', hours: 8, qty: 40}]});
     assert(r.ok && r.date === YESTERDAY, JSON.stringify(r));
+    assert(obj(sheets['日報']).some(x => x['作業員ID'] === 'W02' && x['氏名'] === '佐藤 次郎'), 'ログイン中の人の名前で入らない');
   });
   await run('サーバー側でも入力を確かめる', () => {
     const bad = (p, want) => { let m = ''; try { ctx.submitReport(p); } catch (e) { m = e.message; } assert(m.includes(want), `「${want}」でなく「${m}」`); };
-    const base = {workerId: 'W02', pin: '1234', date: TODAY};
-    bad({...base, pin: '0000', lines: []}, '暗証番号が違います');
-    bad({...base, workerId: 'W03', lines: []}, '名前を選んでください');
+    const base = {workerId: 'W01', date: TODAY};   // 画面から別の人の ID を送っても、ログイン中の人として扱う
+    currentEmail = '';
+    bad({...base, lines: [{siteId: 'S01', workId: 'N22', hours: 1}]}, 'ログインしてから');
+    currentEmail = 'sato@kokorosya.co.jp';
     bad({...base, date: TOMORROW, lines: [{siteId: 'S01', workId: 'N22', hours: 1}]}, '先の日付');
     bad({...base, lines: [{siteId: 'S02', workId: 'N22', hours: 1}]}, 'リノベの作業ではありません');
     bad({...base, lines: [{siteId: 'S03', workId: 'N22', hours: 1}]}, '現場を選んでください');
