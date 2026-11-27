@@ -290,7 +290,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 .mt-modal-prop{font-size:12px;padding:2px 10px;border-radius:20px;border:.5px solid var(--color-border-secondary,#d0d0d0);background:var(--color-background-secondary,#f7f7f5);color:var(--color-text-primary,#1a1a1a);cursor:pointer;font-weight:700}
 .mt-summary{display:flex;gap:8px;flex-wrap:wrap;margin:.25rem 0 .75rem}
 .mt-sum-click{cursor:pointer}.mt-sum-click:hover{filter:brightness(.96)}
-.od-prop-row{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;text-align:left;padding:10px 12px;margin-bottom:8px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-left:3px solid #D32F2F;border-radius:8px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);cursor:pointer;font:inherit}.od-prop-row:hover{background:#FDF3F3}.od-prop-main{display:flex;flex-direction:column;gap:2px;min-width:0}.od-prop-row .od-prop-name{font-size:14px;font-weight:600}.od-prop-sub{font-size:12px;color:var(--color-text-secondary,#666)}.od-prop-row .od-prop-count{font-size:14px;font-weight:700;white-space:nowrap}
+.od-prop-row{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;text-align:left;padding:10px 12px;margin-bottom:8px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-left:3px solid #D32F2F;border-radius:8px;background:var(--color-background-primary,#fff);color:var(--color-text-primary,#1a1a1a);cursor:pointer;font:inherit}.od-prop-row:hover{background:#FDF3F3}.od-prop-row.od-soon{border-left-color:#E0A030}.od-prop-row.od-soon:hover{background:#FFF8EC}.od-prop-main{display:flex;flex-direction:column;gap:2px;min-width:0}.od-prop-row .od-prop-name{font-size:14px;font-weight:600}.od-prop-sub{font-size:12px;color:var(--color-text-secondary,#666)}.od-prop-row .od-prop-count{font-size:14px;font-weight:700;white-space:nowrap}
 .od-back{font-size:12px;padding:4px 10px;margin-bottom:8px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:6px;background:none;color:var(--color-text-primary,#1a1a1a);cursor:pointer}
 .od-prop-hdr{display:flex;justify-content:space-between;align-items:center;margin:12px 0 4px;padding:6px 8px;border-radius:6px;background:var(--color-background-secondary,#f5f5f5);font-size:13px;font-weight:600}.od-prop-hdr:first-child{margin-top:0}.od-prop-count{color:#A32D2D}
 .mt-sum-item{flex:1 1 90px;max-width:160px;border:.5px solid var(--color-border-tertiary,#e5e5e5);border-radius:10px;padding:8px 12px;background:var(--color-background-primary,#fff)}
@@ -534,7 +534,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.2（2026-11-27）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.3（2026-11-27）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -698,7 +698,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 <div class="overlay" id="overdueOv">
   <div class="list-modal">
     <div class="list-modal-hdr">
-      <div><div class="list-modal-title" style="color:#A32D2D">⚠️ 期日超過ボックス</div><div class="list-modal-sub" id="overdueListSub"></div></div>
+      <div><div class="list-modal-title" id="overdueListTitle" style="color:#A32D2D">⚠️ 期日超過ボックス</div><div class="list-modal-sub" id="overdueListSub"></div></div>
       <button class="close-btn" onclick="closeOv('overdueOv')">✕</button>
     </div>
     <div class="list-modal-body" id="overdueListBody"></div>
@@ -1669,7 +1669,7 @@ function openMyTaskModal(pid,no,back){
   modalFromHome=true;
   const p=props.find(x=>x.id===pid);
   document.getElementById('mMeta').insertAdjacentHTML('afterbegin',
-    (back?'<button class="mt-modal-back" onclick="backFromModal()" title="期日超過ボックスの一覧に戻る">← 戻る</button>':'')
+    (back?'<button class="mt-modal-back" onclick="backFromModal()" title="一覧に戻る">← 戻る</button>':'')
     +'<button class="mt-modal-prop" onclick="openPropFromModal('+pid+')" title="この物件のロードマップを開く">🏠 '+p.name+' ›</button>');
   modalBack=back||null;
 }
@@ -1937,15 +1937,30 @@ function openHelpList(pid){
   openOv('helpListOv');
 }
 
-// 期日超過のボックスの一覧（ポップアップ）。groups：[{prop, list:[t…]}]。物件が2件以上なら物件ごとに見出しを付ける
-// fromHome：個人ダッシュボードから開いたとき（その場でチェック画面を開く）
-function overdueBoxes(pid, filter){
-  return TASKS.filter(t=>isBoxOverdue(pid,t.no) && (!filter||filter(t))).sort((a,b)=>{
+// 期日超過・期日が7日以内のボックスの一覧（ポップアップ overdueOv）。kind：'over'（期日超過）／'soon'（7日以内）
+const DUE_KINDS={
+  over:{title:'⚠️ 期日超過ボックス', color:'#A32D2D', name:'期日超過', first:'いちばん古い期日',
+    test:(pid,t)=>isBoxOverdue(pid,t.no)},
+  soon:{title:'⏰ 期日が7日以内のボックス', color:'#B26A00', name:'期日が7日以内', first:'いちばん近い期日',
+    test:(pid,t)=>{ const st=pStates[pid]; if(!st||st.ts[t.no]==='完了') return false; const d=myTaskDiff(myTaskDue(pid,t)); return d!==null&&d>=0&&d<=7; }}
+};
+function dueDiffLabel(due){ const d=myTaskDiff(due); return d===null?'':d<0?(-d)+'日超過':d===0?'今日':'あと'+d+'日'; }
+function dueBoxes(pid, kind, filter){
+  const K=DUE_KINDS[kind];
+  return TASKS.filter(t=>K.test(pid,t) && (!filter||filter(t))).sort((a,b)=>{
     const da=myTaskDue(pid,a), db=myTaskDue(pid,b); return da<db?-1:da>db?1:TASKS.indexOf(a)-TASKS.indexOf(b);
   });
 }
-function renderOverdueList(groups, sub, fromHome, onBack, reopen){
+function overdueBoxes(pid, filter){ return dueBoxes(pid,'over',filter); }
+function setDueListHeader(kind, sub){
+  const K=DUE_KINDS[kind], el=document.getElementById('overdueListTitle');
+  el.textContent=K.title; el.style.color=K.color;
   document.getElementById('overdueListSub').textContent=sub;
+}
+// groups：[{prop, list:[t…]}]。物件が2件以上なら物件ごとに見出しを付ける。fromHome：個人ダッシュボードから（その場でチェック画面を開く）
+function renderOverdueList(groups, sub, fromHome, onBack, reopen, kind){
+  kind=kind||'over'; const K=DUE_KINDS[kind];
+  setDueListHeader(kind, sub);
   const body=document.getElementById('overdueListBody');
   body.innerHTML='';
   if(onBack){
@@ -1953,26 +1968,24 @@ function renderOverdueList(groups, sub, fromHome, onBack, reopen){
     back.onclick=onBack; body.appendChild(back);
   }
   const total=groups.reduce((n,g)=>n+g.list.length,0);
-  if(!total){ body.innerHTML='<div class="list-empty">期日超過のボックスはありません</div>'; openOv('overdueOv'); return; }
+  if(!total){ body.insertAdjacentHTML('beforeend','<div class="list-empty">'+K.name+'のボックスはありません</div>'); openOv('overdueOv'); return; }
   groups.forEach(g=>{
     if(!g.list.length) return;
     const pid=g.prop.id, ps2=pStates[pid]||{ts:{}};
     if(groups.length>1){
       const h=document.createElement('div'); h.className='od-prop-hdr';
-      h.innerHTML='<span class="od-prop-name">🏠 '+g.prop.name+'</span><span class="od-prop-count">'+g.list.length+'件</span>';
+      h.innerHTML='<span class="od-prop-name">🏠 '+g.prop.name+'</span><span class="od-prop-count" style="color:'+K.color+'">'+g.list.length+'件</span>';
       body.appendChild(h);
     }
     g.list.forEach(t=>{
       const due=myTaskDue(pid,t);
-      const d=new Date(due);d.setHours(0,0,0,0);
-      const days=Math.round((today-d)/864e5);
       const grpCls='g'+(t.group||'').replace(/\s/g,'');
       const st=(ps2.ts&&ps2.ts[t.no])||'着手前';
       const div=document.createElement('div');div.className='list-item';
       div.innerHTML='<div class="list-item-no">No.'+t.no+'</div>'
         +'<div class="list-item-name">'+t.name+'</div>'
         +'<div class="list-item-meta">'
-        +'<span style="font-size:13px;color:#A32D2D;font-weight:600">📅 '+due+'（'+days+'日超過）</span>'
+        +'<span style="font-size:13px;color:'+K.color+';font-weight:600">📅 '+due+'（'+dueDiffLabel(due)+'）</span>'
         +'<span class="badge s'+st+'">'+st+'</span>'
         +(t.group?'<span class="badge '+grpCls+'">'+t.group+'</span>':'')+'</div>';
       const btn=document.createElement('button');btn.className='open-btn';btn.textContent='このボックスを開く →';
@@ -1990,40 +2003,43 @@ function openOverdue(pid){
   const list=overdueBoxes(pid);
   renderOverdueList([{prop:p, list}], p.name+'：'+list.length+'件', false);
 }
-// 個人ダッシュボードの「期日超過」：まず物件を選び（物件名と件数）、そこから期日超過のボックスを選ぶ
-function myOverdueGroups(user){
+// 個人ダッシュボードの「期日超過」「7日以内」：まず物件を選び（物件名と件数）、そこからボックスを選ぶ
+function myDueGroups(user, kind){
   return props.map(p=>{
     const tmap=tantoMap[p.id]||{};
-    return {prop:p, list: pStates[p.id] ? overdueBoxes(p.id, t=>(tmap[t.category]||t.tanto||'')===user) : []};
+    return {prop:p, list: pStates[p.id] ? dueBoxes(p.id, kind, t=>(tmap[t.category]||t.tanto||'')===user) : []};
   }).filter(g=>g.list.length);
 }
-function openMyOverdue(user){
-  user=user||myTaskUser;
-  const groups=myOverdueGroups(user);
+function myOverdueGroups(user){ return myDueGroups(user,'over'); }
+function openMyDueList(kind, user){
+  user=user||myTaskUser; const K=DUE_KINDS[kind];
+  const groups=myDueGroups(user, kind);
   const total=groups.reduce((n,g)=>n+g.list.length,0);
-  document.getElementById('overdueListSub').textContent=user+' の担当：'+groups.length+'物件・'+total+'件。物件を選んでください';
+  setDueListHeader(kind, user+' の担当：'+groups.length+'物件・'+total+'件。物件を選んでください');
   const body=document.getElementById('overdueListBody');
   body.innerHTML='';
-  if(!groups.length){ body.innerHTML='<div class="list-empty">期日超過のボックスはありません</div>'; openOv('overdueOv'); return; }
+  if(!groups.length){ body.innerHTML='<div class="list-empty">'+K.name+'のボックスはありません</div>'; openOv('overdueOv'); return; }
   groups.forEach(g=>{
-    const oldest=myTaskDue(g.prop.id, g.list[0]);
-    const d=new Date(oldest); d.setHours(0,0,0,0);
-    const days=Math.round((today-d)/864e5);
-    const row=document.createElement('button'); row.className='od-prop-row';
+    const first=myTaskDue(g.prop.id, g.list[0]);
+    const row=document.createElement('button'); row.className='od-prop-row od-'+kind;
     row.innerHTML='<span class="od-prop-main"><span class="od-prop-name">🏠 '+g.prop.name+'</span>'
-      +'<span class="od-prop-sub">いちばん古い期日 '+oldest+'（'+days+'日超過）</span></span>'
-      +'<span class="od-prop-count">'+g.list.length+'件 ›</span>';
-    row.onclick=()=>openMyOverdueProp(g.prop.id, user);
+      +'<span class="od-prop-sub">'+K.first+' '+first+'（'+dueDiffLabel(first)+'）</span></span>'
+      +'<span class="od-prop-count" style="color:'+K.color+'">'+g.list.length+'件 ›</span>';
+    row.onclick=()=>openMyDueProp(kind, g.prop.id, user);
     body.appendChild(row);
   });
   openOv('overdueOv');
 }
-function openMyOverdueProp(pid, user){
+function openMyDueProp(kind, pid, user){
   user=user||myTaskUser;
-  const g=myOverdueGroups(user).find(x=>x.prop.id===pid);
+  const g=myDueGroups(user, kind).find(x=>x.prop.id===pid);
   const p=props.find(x=>x.id===pid);
-  renderOverdueList([{prop:p, list:g?g.list:[]}], p.name+'（'+user+' の担当）：'+(g?g.list.length:0)+'件', true, ()=>openMyOverdue(user), ()=>openMyOverdueProp(pid,user));
+  renderOverdueList([{prop:p, list:g?g.list:[]}], p.name+'（'+user+' の担当）：'+(g?g.list.length:0)+'件', true,
+    ()=>openMyDueList(kind,user), ()=>openMyDueProp(kind,pid,user), kind);
 }
+function openMyOverdue(user){ openMyDueList('over', user); }
+function openMyOverdueProp(pid, user){ openMyDueProp('over', pid, user); }
+function openMySoon(user){ openMyDueList('soon', user); }
 
 // ===== イベント =====
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
@@ -2201,7 +2217,7 @@ function renderMyTasks(targetUser){
     +'<div class="mt-sum-item"><div class="mt-sum-label">担当物件</div><div class="mt-sum-val">'+groups.length+'</div></div>'
     +'<div class="mt-sum-item"><div class="mt-sum-label">未完了</div><div class="mt-sum-val">'+sum.left+'</div></div>'
     +'<div class="mt-sum-item'+(sum.over?' mt-sum-over mt-sum-click" onclick="openMyOverdue()" title="期日超過のボックスを、物件を選んで表示':'')+'"><div class="mt-sum-label">期日超過'+(sum.over?' ›':'')+'</div><div class="mt-sum-val">'+sum.over+'</div></div>'
-    +'<div class="mt-sum-item'+(sum.soon?' mt-sum-soon':'')+'"><div class="mt-sum-label">7日以内</div><div class="mt-sum-val">'+sum.soon+'</div></div>'
+    +'<div class="mt-sum-item'+(sum.soon?' mt-sum-soon mt-sum-click" onclick="openMySoon()" title="期日が7日以内のボックスを、物件を選んで表示':'')+'"><div class="mt-sum-label">7日以内'+(sum.soon?' ›':'')+'</div><div class="mt-sum-val">'+sum.soon+'</div></div>'
     +'<div class="mt-sum-item'+(sum.noPlan?' mt-sum-noplan':'')+'"><div class="mt-sum-label">予定未入力</div><div class="mt-sum-val">'+sum.noPlan+'</div></div>'
     +'</div>';
 
@@ -2521,7 +2537,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.8.2';
+const APP_VERSION = '0.8.3';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う

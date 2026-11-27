@@ -581,6 +581,39 @@ run('個人ダッシュボードの期日超過：まず物件を選び、そこ
   wv.openOverdue(c);
   if(!dv.querySelector('#overdueListBody .list-empty')) throw new Error('超過なしの表示');
 });
+run('個人ダッシュボードの7日以内も、物件 → ボックス → 戻る（0.8.3）', () => {
+  const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; }}).window;
+  const dv = wv.document;
+  ['近いA邸','近いB邸'].forEach(n=>{ wv.openAddDlg(); dv.getElementById('fName').value=n; wv.addProperty(); });
+  const a = wv.eval('props.find(p=>p.name==="近いA邸").id'), b = wv.eval('props.find(p=>p.name==="近いB邸").id');
+  const kk = wv.eval('TASKS.filter(t=>t.category==="企画").map(t=>t.no)');
+  [a,b].forEach(p=>wv.eval('tantoMap['+p+']={"企画":"江藤　奨"}'));
+  const ymd = n => { const d=new Date(); d.setDate(d.getDate()+n); const z=x=>String(x).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); };
+  // A：今日・あと3日・あと8日（対象外）・超過（対象外）・あと2日で完了（対象外）。B：あと7日
+  wv.eval('pStates['+a+'].overrideDue={'+kk[0]+':"'+ymd(3)+'",'+kk[1]+':"'+ymd(0)+'",'+kk[2]+':"'+ymd(8)+'",'+kk[3]+':"'+ymd(-2)+'",'+kk[4]+':"'+ymd(2)+'"}; pStates['+a+'].ts['+kk[4]+']="完了"');
+  wv.eval('pStates['+b+'].overrideDue={'+kk[0]+':"'+ymd(7)+'"}');
+  wv.setCurUser('江藤　奨'); wv.switchHomeTab('me');
+  const tile = [...dv.querySelectorAll('#homePanel-me .mt-sum-item')].find(el=>el.textContent.includes('7日以内'));
+  if(!tile.classList.contains('mt-sum-click') || tile.querySelector('.mt-sum-val').textContent!=='3') throw new Error('7日以内のタイル '+tile.outerHTML);
+  tile.click();
+  if(!dv.getElementById('overdueListTitle').textContent.includes('7日以内')) throw new Error('見出しが7日以内でない');
+  const rows = [...dv.querySelectorAll('#overdueListBody .od-prop-row')];
+  const ra = rows.find(r=>r.textContent.includes('近いA邸'));
+  if(rows.length!==2 || !ra.textContent.includes('2件') || !ra.textContent.includes('今日')) throw new Error('物件の行 '+rows.map(r=>r.textContent).join(' / '));
+  ra.click();
+  const items = [...dv.querySelectorAll('#overdueListBody .list-item')];
+  if(items.length!==2 || !items[0].textContent.includes('今日') || !items[1].textContent.includes('あと3日')) throw new Error('ボックス '+items.map(i=>i.textContent).join(' / '));
+  items[1].querySelector('.open-btn').click();
+  dv.querySelector('#mMeta .mt-modal-back').click();
+  if(!dv.getElementById('overdueOv').classList.contains('open') || dv.querySelectorAll('#overdueListBody .list-item').length!==2 || !dv.getElementById('overdueListTitle').textContent.includes('7日以内')) throw new Error('戻ると7日以内の一覧に戻らない');
+  dv.querySelector('#overdueListBody .od-back').click();
+  if(dv.querySelectorAll('#overdueListBody .od-prop-row').length!==2) throw new Error('物件一覧に戻らない');
+  wv.closeOv('overdueOv');
+  // 期日超過に切り替えると見出しも戻る
+  wv.openMyOverdue();
+  if(!dv.getElementById('overdueListTitle').textContent.includes('期日超過') || dv.querySelectorAll('#overdueListBody .od-prop-row').length!==1) throw new Error('期日超過の見出し・物件');
+});
 run('11/27 テンプレート：133 挨拶廻りの末尾にタスク、97 の補足メモ（0.7.2）', () => {
   const V13 = w.eval('TEMPLATE_V13');
   const full = i => Object.assign({c:false,f:false,h:false,hm:'',j:''}, i);
