@@ -510,6 +510,118 @@ run('ホームのタブは左が個人ダッシュボード、右が全体ダッ
   if(!wv.document.getElementById('homePanel-me').classList.contains('on') || wv.document.getElementById('homePanel-all').classList.contains('on')) throw new Error('起動時に個人ダッシュボードが開かない');
   if(!wv.document.getElementById('homeTab-me').classList.contains('on')) throw new Error('個人ダッシュボードのタブが選ばれていない');
 });
+run('11/25 テンプレート：162 木工事検査の途中に増えたタスクに合わせてチェックを移す（0.6.3）', () => {
+  const V12 = w.eval('TEMPLATE_V12');
+  const full = i => Object.assign({c:false,f:false,h:false,hm:'',j:''}, i);
+  if(w.v6Hash(V12[162].old.map(full))!==V12[162].h) throw new Error('更新前の文言の印が合わない');
+  const T0 = w.eval('TASKS').find(t=>t.no===162);
+  if(T0.items.length!==15 || !T0.items[5].t.startsWith('開き戸の開口寸法確認')) throw new Error('162 のタスク');
+  const arr = (n,on) => Array.from({length:n},(_,i)=>on.includes(i));
+  const mk = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify(data)); }}).window;
+  const base = () => ({boxNoVer:11, props:[{id:1,name:'旧邸'}], nextPid:2,
+    pStates:{1:{ts:{'162':'進行中'}, done:{'162':arr(14,[4,5,13])}, fuyo:{}, help:{}, memo:{}, note:{}, overrideDue:{}}},
+    itemCheckDates:{'1_162_5':'2026-11-20'}, taskLinks:{'162_13':[{title:'x',url:'https://x'}]}});
+  const check = (wv,label) => {
+    const d = wv.eval('pStates[1].done[162]').map((v,i)=>v?i:-1).filter(i=>i>=0).join(',');
+    if(d!=='4,6,14' || wv.eval('pStates[1].done[162].length')!==15) throw new Error(label+'：チェックの位置 '+d);
+    if(wv.eval('itemCheckDates["1_162_6"]')!=='2026-11-20' || !wv.eval('taskLinks["162_14"]')) throw new Error(label+'：チェック日・添付');
+  };
+  check(mk(base()), '未編集');
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS_V8))');
+  if(tasks.find(t=>t.no===162).items.length!==14) throw new Error('TASKS_V8 の162が更新前になっていない');
+  const wv = mk(Object.assign(base(), {tasks}));
+  if(wv.eval('TASKS').find(t=>t.no===162).items.length!==15) throw new Error('編集済み：一覧が新しくならない');
+  check(wv, '編集済み');
+});
+run('打合せ9ボックスのフェーズ変更：編集済みの保存データにも反映（0.5.7）', () => {
+  const tasks = w.eval('JSON.parse(JSON.stringify(TASKS))').map(t=>t.no>=120&&t.no<=128?Object.assign({}, t, {group:'着工前工務業務'}):t);
+  tasks.find(t=>t.no===128).name = '自分で名前を変えた左官';
+  const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7', JSON.stringify({boxNoVer:10, props:[], nextPid:1, pStates:{}, tasks})); }}).window;
+  const T = wv.eval('TASKS');
+  if(T.find(t=>t.no===120).group!=='着工後' || T.find(t=>t.no===127).group!=='着工後') throw new Error('編集済みの一覧の打合せが着工後にならない');
+  if(T.find(t=>t.no===128).group!=='着工前工務業務') throw new Error('名前を変えたボックスまで変えてしまった');
+});
+run('開始予定・完了予定：担当者だけが入力でき、保存・取り込みで残る（0.6.0）', () => {
+  const mk = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.alert=()=>{}; if(data) win.localStorage.setItem('housing_roadmap_v7', data); }}).window;
+  const wv = mk(); const dv = wv.document;
+  wv.openAddDlg(); dv.getElementById('fName').value='予定邸'; wv.addProperty();
+  const pid = wv.eval('props[0].id');
+  wv.eval('tantoMap['+pid+']={"企画":"江藤　奨","設計作図":"野内　早紀"}; props[0].tanto="江藤　奨"');
+  wv.setCurUser('江藤　奨');
+  wv.openProp(pid); wv.render();
+  const row = no => [...dv.querySelectorAll('#tbody tr')].find(tr=>tr.querySelector('.rc-no').textContent===String(no));
+  const heads = [...dv.querySelector('#tbody').closest('table').querySelectorAll('thead th')].map(th=>th.textContent);
+  if(!heads.includes('開始予定') || !heads.includes('完了予定')) throw new Error('見出しに開始予定・完了予定が無い');
+  const kikaku = wv.eval('TASKS.find(t=>t.category==="企画").no'), sakuzu = wv.eval('TASKS.find(t=>t.category==="設計作図").no'), kaigi = wv.eval('TASKS.find(t=>t.category==="会議").no');
+  // 担当者（企画＝江藤）は入力欄、ほかの職種（設計作図＝野内）は表示だけ。会議は主担当者
+  if(!row(kikaku).querySelector('.rc-plan-start input[type=date]')) throw new Error('担当者のボックスに入力欄が無い');
+  if(row(sakuzu).querySelector('.rc-plan input')) throw new Error('担当でないボックスに入力欄がある');
+  if(!row(kaigi).querySelector('.rc-plan-end input')) throw new Error('会議のボックスを主担当者が入力できない');
+  const inS = row(kikaku).querySelector('.rc-plan-start input'), inE = row(kikaku).querySelector('.rc-plan-end input');
+  inS.value='2026-12-01'; inS.dispatchEvent(new wv.Event('change'));
+  inE.value='2026-11-20'; inE.dispatchEvent(new wv.Event('change'));
+  if(wv.eval('pStates['+pid+'].planEnd['+kikaku+']')) throw new Error('開始より前の完了予定が入った');
+  inE.value='2026-12-05'; inE.dispatchEvent(new wv.Event('change'));
+  if(wv.eval('pStates['+pid+'].planStart['+kikaku+']')!=='2026-12-01' || wv.eval('pStates['+pid+'].planEnd['+kikaku+']')!=='2026-12-05') throw new Error('予定が入らない');
+  // 未入力の印（⚠️）：入力すると消え、未入力の欄には付く。完了したボックスには付かない
+  if(row(kikaku).querySelector('.rc-plan-start').classList.contains('plan-missing')) throw new Error('入力したのに未入力の印が残る');
+  if(!row(sakuzu).querySelector('.rc-plan-start').classList.contains('plan-missing') || !row(sakuzu).querySelector('.rc-plan-start .plan-warn')) throw new Error('未入力の欄に印が無い（担当でない人の表示）');
+  const kk3 = wv.eval('TASKS.filter(t=>t.category==="企画")[2].no');
+  if(!row(kk3).querySelector('.rc-plan-end').classList.contains('plan-missing')) throw new Error('未入力の入力欄に印が無い');
+  // 担当でない人は setPlan でも入らない
+  const fake = {value:'2026-12-01', classList:{toggle(){}}};
+  wv.setPlan(pid, sakuzu, 'start', fake);
+  if(wv.eval('pStates['+pid+'].planStart['+sakuzu+']')) throw new Error('担当でないボックスに予定が入った');
+  if(!row(kikaku).querySelector('.rc-plan-end input').className.includes('plan-in') || row(kikaku).querySelector('.rc-plan input.empty')) throw new Error('入力欄のクラス（.empty と重ならない）');
+  // 完了したボックスは入力欄を出さない（表示だけ）
+  const kikaku2 = wv.eval('TASKS.filter(t=>t.category==="企画")[1].no');
+  wv.eval('pStates['+pid+'].ts['+kikaku2+']="完了"'); wv.render();
+  if(row(kikaku2).querySelector('.rc-plan input')) throw new Error('完了したボックスに入力欄が出る');
+  if(row(kikaku2).querySelector('.plan-missing')) throw new Error('完了したボックスに未入力の印');
+  wv.eval('pStates['+pid+'].ts['+kikaku2+']="着手前"'); wv.render();
+  // 別の人に切り替えると、表示だけになる
+  wv.setCurUser('野内　早紀'); wv.render();
+  if(row(kikaku).querySelector('.rc-plan input') || row(kikaku).querySelector('.rc-plan-start').textContent!=='12/01') throw new Error('担当でない人に入力欄が出る／表示が違う');
+  if(!row(sakuzu).querySelector('.rc-plan-start input')) throw new Error('設計作図の担当者に入力欄が出ない');
+  // 会議・打合せは、主担当者でなくても入力できる（0.6.4）
+  const uchi = wv.eval('TASKS.find(t=>t.category==="打合せ").no');
+  if(!row(kaigi).querySelector('.rc-plan-start input') || !row(uchi).querySelector('.rc-plan-end input')) throw new Error('会議・打合せを主担当者以外が入力できない');
+  wv.setPlan(pid, kaigi, 'start', {value:'2026-12-03', classList:{toggle(){}}});
+  if(wv.eval('pStates['+pid+'].planStart['+kaigi+']')!=='2026-12-03') throw new Error('主担当者以外が会議の予定を入れられない');
+  // 主担当者が未設定の物件でも入力できる
+  wv.eval('props[0].tanto=""'); wv.render();
+  if(!row(kaigi).querySelector('.rc-plan-end input')) throw new Error('主担当者が未設定の物件で会議の予定を入力できない');
+  if(row(sakuzu).querySelector('.rc-plan-start input')===null) throw new Error('（確認）設計作図の担当者の入力欄');
+  wv.eval('props[0].tanto="江藤　奨"'); wv.render();
+  // 保存して開き直しても残る
+  wv.saveData();
+  const saved = wv.localStorage.getItem('housing_roadmap_v7');
+  const w2 = mk(saved);
+  if(w2.eval('pStates['+pid+'].planStart['+kikaku+']')!=='2026-12-01') throw new Error('開き直すと予定が消える');
+  // ドライブからの取り込み：シートに予定がある分は置き換え、無い分はアプリの予定を残す
+  w2.mergeImportData({props:[{id:9,name:'予定邸',tanto:'江藤　奨'}], tantoMap:{9:{'企画':'江藤　奨'}}, pStates:{9:{ts:{}, planStart:{[sakuzu]:'2026-12-10'}, planEnd:{[sakuzu]:'2026-12-12'}}}});
+  const P = w2.eval('pStates['+pid+']');
+  if(P.planStart[kikaku]!=='2026-12-01' || P.planStart[sakuzu]!=='2026-12-10' || P.planEnd[sakuzu]!=='2026-12-12') throw new Error('取り込みで予定が消える／入らない '+JSON.stringify(P.planStart));
+  // 個人ダッシュボードにも出る
+  w2.setCurUser('江藤　奨'); w2.switchHomeTab('me'); w2.toggleMyTaskProp(pid);
+  if(!w2.document.querySelector('#homePanel-me .rc-plan-start input')) throw new Error('個人ダッシュボードに入力欄が無い');
+  // 予定未入力のアラート：完了していない担当ボックスのうち、開始・完了予定のどちらかが空の件数
+  const dm = w2.document;
+  const nKikaku = w2.eval('TASKS.filter(t=>t.category==="企画").length');
+  const exp = w2.eval('TASKS.filter(t=>t.category==="企画" && pStates['+pid+'].ts[t.no]!=="完了" && !(pStates['+pid+'].planStart[t.no] && pStates['+pid+'].planEnd[t.no])).length');
+  if(exp!==nKikaku-1) throw new Error('想定の件数 '+exp);
+  if(!dm.getElementById('mtPlanAlert') || !dm.getElementById('mtPlanAlert').textContent.includes(exp+'件')) throw new Error('予定未入力のお知らせが無い／件数が違う');
+  const tile = [...dm.querySelectorAll('.mt-sum-item')].find(e=>e.textContent.includes('予定未入力'));
+  if(!tile || tile.querySelector('.mt-sum-val').textContent!==String(exp)) throw new Error('予定未入力の件数のタイル');
+  if(dm.querySelectorAll('#homePanel-me .noplan-tag').length!==exp) throw new Error('行の「予定未入力」の数 '+dm.querySelectorAll('#homePanel-me .noplan-tag').length);
+  // 完了したボックスは数えない
+  w2.eval('pStates['+pid+'].ts[TASKS.find(t=>t.category==="企画"&&!pStates['+pid+'].planStart[t.no]).no]="完了"');
+  w2.renderMyTasks('江藤　奨');
+  if(!dm.getElementById('mtPlanAlert').textContent.includes((exp-1)+'件')) throw new Error('完了したボックスを数えている');
+});
 run('期日超過のボックスはボックス名を赤で表示する（0.5.3）', () => {
   const wv = new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
     beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; win.localStorage.setItem('housing_roadmap_v7_user', JSON.stringify('江藤　奨')); }}).window;
@@ -520,6 +632,8 @@ run('期日超過のボックスはボックス名を赤で表示する（0.5.3�
   wv.openProp(pid); wv.render();
   const nameOf = no => [...dv.querySelectorAll('#tbody tr')].find(tr=>tr.querySelector('.rc-no').textContent===String(no)).querySelector('.tname-txt');
   if(!nameOf(12).classList.contains('over')) throw new Error('期日を過ぎた未完了のボックスが赤でない');
+  const rowOf = no => nameOf(no).closest('tr');
+  if(!rowOf(12).classList.contains('rm-row-over') || rowOf(13).classList.contains('rm-row-over') || rowOf(14).classList.contains('rm-row-over')) throw new Error('期日超過の行の印');
   if(nameOf(13).classList.contains('over')) throw new Error('完了のボックスが赤');
   if(nameOf(14).classList.contains('over') || nameOf(15).classList.contains('over')) throw new Error('期日前・期日なしのボックスが赤');
   if(wv.overdueCount(pid)!==1) throw new Error('期日超過の件数 '+wv.overdueCount(pid));
@@ -797,6 +911,7 @@ run('テンプレート：Driveの「注文住宅 タスク管理表」と一致
   if(box(185).name!=='地盤改良発注' || box(185).group!=='完成宅地' || box(185).category!=='現場監督' || box(185).items.length!==2 || !box(185).items[0].t.startsWith('地盤改良工事発注')) throw new Error('11/24：185 地盤改良発注');
   if(box(61).items.some(i=>i.t.includes('入念な転圧'))) throw new Error('11/24：61に62と重複のタスクが残っている');
   if(box(102).group!=='着工後') throw new Error('11/24（2回目）：102 BELS申請のフェーズ');
+  if([120,121,122,123,124,125,126,127,128].some(no=>box(no).group!=='着工後') || box(119).group!=='着工前工務業務' || box(129).group!=='着工前工務業務') throw new Error('11/24（夕方）：打合せ9ボックスのフェーズ');
   if(box(62).category!=='企画' || w3.eval('TASK_GATE_MAP[62].days')!==73 || w3.eval('TASK_GATE_MAP[185].days')!==66) throw new Error('11/24：62・185 の担当・所要日程');
   if(box(18).items.length!==40 || box(38).items.length!==147 || box(56).items.length!==2 || box(83).items.length!==30 || box(85).items.length!==130 || box(115).items.length!==11 || box(132).items.length!==5 || box(133).items.length!==12) throw new Error('11/24 のテンプレートのタスク数');
   if(box(176).name!=='引渡' || box(176).items.length!==1 || box(176).items[0].t!=='お花の受け取り') throw new Error('176 引渡の中身');
@@ -873,6 +988,64 @@ run('登録済み・取り込んだ物件の期日は変えず、新しい物件
   b.mergeImportData({props:[{id:9,name:'杉田様邸'}], pStates:{9:{overrideDue:{58:'2026-08-01'}}}});
   b.mergeImportData({appVersion:'0.2.2', props:[{id:9,name:'別アプリ邸'}], pStates:{}});
   const q=b.eval('props'); if(!q.find(x=>x.name==='杉田様邸').dueFromSheet || q.find(x=>x.name==='別アプリ邸').dueFromSheet) throw new Error('取り込み時の印');
+});
+run('ボックス編集で対象ゲート・所要日程を変える（0.7.0・0.7.1 今の物件にも）', () => {
+  const mk = data => new JSDOM(html, {runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    beforeParse(win){ win.URL.createObjectURL=()=>'blob:x'; win.URL.revokeObjectURL=()=>{}; if(data) win.localStorage.setItem('housing_roadmap_v7', data); }}).window;
+  const a = mk(null), d = a.document;
+  a.setCurUser('江藤　奨');
+  // 新しい物件（計算する）と、シートから取り込んだ物件（計算しない）
+  a.openAddDlg(); d.getElementById('fName').value='計算邸'; a.addProperty();
+  const pid = a.eval('props.find(p=>p.name==="計算邸").id');
+  a.openProp(pid); a.openGateDlg(); d.getElementById('gate-着工').value='2026-11-02'; a.saveGate();
+  a.mergeImportData({props:[{id:9,name:'シート邸'}], gateDates:{9:{'着工':'2026-11-02'}}, pStates:{9:{overrideDue:{58:'2026-08-01'}}}});
+  const sid = a.eval('props.find(p=>p.name==="シート邸").id');
+  if(a.eval('pStates['+pid+'].overrideDue[58]')!=='2026-10-26') throw new Error('前提の期日 '+a.eval('pStates['+pid+'].overrideDue[58]'));
+  // 編集画面に今の値が出る
+  a.openEditTaskDlg(58);
+  if(d.getElementById('teGate').value!=='着工' || d.getElementById('teDays').value!=='7') throw new Error('編集画面の対象ゲート・所要日程 '+d.getElementById('teGate').value+' '+d.getElementById('teDays').value);
+  if(!d.getElementById('teGateNote').textContent.includes('スプレッドシート')) throw new Error('注記が無い');
+  d.getElementById('teDays').value='10'; a.saveTaskEdit();
+  if(a.eval('pStates['+pid+'].overrideDue[58]')!=='2026-10-23') throw new Error('所要日程を変えても期日が変わらない '+a.eval('pStates['+pid+'].overrideDue[58]'));
+  // 今登録している物件（シートから取り込んだ物件）も、変えたボックスだけ計算し直す（0.7.1）
+  if(a.eval('pStates['+sid+'].overrideDue[58]')!=='2026-10-23') throw new Error('取り込んだ物件の期日が変わらない '+a.eval('pStates['+sid+'].overrideDue[58]'));
+  a.eval('pStates['+sid+'].overrideDue[61]="2026-07-07"');
+  a.openProp(sid); a.openGateDlg(); d.getElementById('gate-上棟').value='2027-01-10'; a.saveGate();
+  if(a.eval('pStates['+sid+'].overrideDue[61]')!=='2026-07-07' || a.eval('pStates['+sid+'].overrideDue[58]')!=='2026-10-23') throw new Error('変えていないボックスの期日が変わった／変えたボックスが戻った');
+  // 取り込み直しても、変えたボックスはアプリの計算のまま（ほかのボックスはシートの期日）
+  a.mergeImportData({props:[{id:9,name:'シート邸'}], gateDates:{9:{'着工':'2026-11-02'}}, pStates:{9:{overrideDue:{58:'2026-08-01',61:'2026-07-08'}}}});
+  if(a.eval('pStates['+sid+'].overrideDue[58]')!=='2026-10-23' || a.eval('pStates['+sid+'].overrideDue[61]')!=='2026-07-08') throw new Error('取り込み直したときの期日 '+JSON.stringify(a.eval('pStates['+sid+'].overrideDue')));
+  // ゲートの日付が無い物件は変えない
+  a.mergeImportData({props:[{id:8,name:'ゲート無し邸'}], gateDates:{8:{}}, pStates:{8:{overrideDue:{58:'2026-09-09'}}}});
+  if(a.eval('pStates[props.find(p=>p.name==="ゲート無し邸").id].overrideDue[58]')!=='2026-09-09') throw new Error('ゲートの日付が無いのに期日が変わった');
+  if(a.eval('TASK_GATE_MAP[58].days')!==7) throw new Error('テンプレートの値が書き換わった');
+  const h = a.eval('boxHistory').slice(-1)[0];
+  if(!h || !h.detail.includes('所要日程 着工の7日前→着工の10日前')) throw new Error('更新履歴 '+JSON.stringify(h));
+  // ゲートの後（マイナス）、対象ゲートなし
+  a.openEditTaskDlg(58); d.getElementById('teDays').value='-3'; a.saveTaskEdit();
+  if(a.eval('pStates['+pid+'].overrideDue[58]')!=='2026-11-05') throw new Error('マイナスの所要日程 '+a.eval('pStates['+pid+'].overrideDue[58]'));
+  let alerted=''; a.alert = m=>{ alerted=m; };
+  a.openEditTaskDlg(58); d.getElementById('teGate').value='上棟'; d.getElementById('teDays').value=''; a.saveTaskEdit();
+  if(!alerted.includes('所要日程')) throw new Error('所要日程が空のときに知らせない');
+  if(a.eval('gateMapEdits[58].gate')!=='着工') throw new Error('所要日程が空なのに保存された');
+  a.closeOv('taskEditDlgOv');
+  a.openEditTaskDlg(58); d.getElementById('teGate').value=''; a.saveTaskEdit();
+  if(a.eval('pStates['+pid+'].overrideDue[58]')) throw new Error('対象ゲートなしで期日が残る');
+  if(a.eval('pStates['+sid+'].overrideDue[58]')) throw new Error('対象ゲートなしで取り込んだ物件の期日が残る');
+  // 保存して開き直しても残る
+  a.saveData(); const b = mk(a.localStorage.getItem('housing_roadmap_v7'));
+  if(b.eval('gateMapOf(58)')!==null || b.eval('JSON.stringify(gateMapEdits)')!=='{"58":null}') throw new Error('開き直すと戻る '+b.eval('JSON.stringify(gateMapEdits)'));
+  // テンプレートと同じ値に戻すと、変更の印が消える（テンプレートの更新が届く）
+  b.openEditTaskDlg(58); b.document.getElementById('teGate').value='着工'; b.document.getElementById('teDays').value='7'; b.saveTaskEdit();
+  if(b.eval('Object.keys(gateMapEdits).length')!==0) throw new Error('テンプレートと同じ値なのに印が残る');
+  if(b.eval('pStates['+pid+'].overrideDue[58]')!=='2026-10-26') throw new Error('戻した期日 '+b.eval('pStates['+pid+'].overrideDue[58]'));
+  if(b.eval('pStates['+sid+'].overrideDue[58]')!=='2026-10-26') throw new Error('戻した期日（取り込んだ物件） '+b.eval('pStates['+sid+'].overrideDue[58]'));
+  // 新しいボックスにも設定できる
+  b.openAddTaskDlg(); b.document.getElementById('teTaskName').value='新しい箱'; b.document.getElementById('teGate').value='着工'; b.document.getElementById('teDays').value='1'; b.saveTaskEdit();
+  const nno = b.eval('TASKS[TASKS.length-1].no');
+  if(b.eval('pStates['+pid+'].overrideDue['+nno+']')!=='2026-11-01') throw new Error('新しいボックスの期日');
+  b.deleteTask = b.deleteTask; b.confirm = ()=>true; b.deleteTask(nno);
+  if(b.eval('gateMapEdits['+nno+']')!==undefined) throw new Error('削除したボックスの所要日程が残る');
 });
 const OLD_DATA = { // 番号を詰める前（184ボックス）の保存データ
   props:[{id:1,name:'旧邸'}], nextPid:2,
