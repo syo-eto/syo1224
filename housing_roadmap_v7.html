@@ -130,6 +130,11 @@ table.main thead{background:var(--color-background-secondary,#f5f5f5)}
 table.main th{padding:8px 10px;text-align:left;font-size:13px;font-weight:500;color:var(--color-text-secondary,#666);border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);white-space:nowrap}
 table.main td{padding:9px 10px;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);vertical-align:middle}
 table.main tr:last-child td{border-bottom:none}
+/* ロードマップの表（各物件の画面）：余白を詰める（0.8.6）。完了日は右の列にあるので、PC・タブレットではボックス名の下に重ねて出さない */
+#tbody td{padding:5px 8px}
+.nw{white-space:nowrap}
+@media (min-width:601px){#tbody .kanryobi-txt{display:none}}
+@media (min-width:601px) and (max-width:1024px){#tbody .rc-name{min-width:7em}#tbody .rc-tanto{white-space:nowrap}#tbody td{padding:5px 5px}#tbody .plan-in{width:94px}#tbody .rc-due{white-space:normal!important;min-width:6.4em}}
 table.main tr:hover td{background:var(--color-background-secondary,#f5f5f5)}
 .plan-in{font-size:12px;height:28px;padding:2px 4px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:6px;width:122px;background:#fff;color:inherit;font-family:inherit}
 .plan-warn{display:none;font-size:10px;margin-right:3px;vertical-align:middle}
@@ -534,7 +539,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.5（2026-11-27）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.6（2026-11-27）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -1499,9 +1504,11 @@ function fmtDue(due){
   if(!due)return'―';
   const d=new Date(due);d.setHours(0,0,0,0);
   const diff=Math.round((d-today)/864e5),s=due.slice(5).replace('-','/');
-  if(diff<0)return'<span class="due-over">'+s+'('+Math.abs(diff)+'日超過)</span>';
-  if(diff===0)return'<span class="due-soon">'+s+'(今日)</span>';
-  if(diff<=7)return'<span class="due-soon">'+s+'(残'+diff+'日)</span>';
+  // 日付と（○日超過）はそれぞれ途中で折り返さない（狭い画面では2行になる）
+  const nw=x=>'<span class="nw">'+x+'</span>';
+  if(diff<0)return'<span class="due-over">'+nw(s)+'<wbr>'+nw('('+Math.abs(diff)+'日超過)')+'</span>';
+  if(diff===0)return'<span class="due-soon">'+nw(s)+'<wbr>'+nw('(今日)')+'</span>';
+  if(diff<=7)return'<span class="due-soon">'+nw(s)+'<wbr>'+nw('(残'+diff+'日)')+'</span>';
   return s;
 }
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -2532,7 +2539,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.8.5';
+const APP_VERSION = '0.8.6';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う

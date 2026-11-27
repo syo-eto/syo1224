@@ -52,6 +52,8 @@ run('スマートフォン用：ロードマップの行に列の印（カード
   // ロードマップの表にフェーズは出さない（0.8.5、利用者の指示）
   if(rows[0].querySelector('.rc-grp') || [...rows[0].closest('table').querySelectorAll('thead th')].some(th=>th.textContent==='フェーズ')) throw new Error('ロードマップにフェーズの列がある');
   if(rows[0].children.length!==rows[0].closest('table').querySelectorAll('thead th').length) throw new Error('見出しと列の数が合わない');
+  // 期日は日付と（○日超過）をそれぞれ折り返さない（0.8.6）
+  if(!/<span class="nw">\d\d\/\d\d<\/span><wbr><span class="nw">\(\d+日超過\)<\/span>/.test(w.fmtDue('2020-01-01'))) throw new Error('期日の折り返し '+w.fmtDue('2020-01-01'));
   if(!rows[0].querySelector('.rc-tanto').classList.contains('rc-none')) throw new Error('未設定の担当に rc-none が無い');
   if(!d.querySelector('#page-rm table.rc-tbl')) throw new Error('ロードマップの表に rc-tbl が無い');
 });
