@@ -691,7 +691,8 @@ run('開始予定・完了予定：担当者だけが入力でき、保存・取
   // 担当者（企画＝江藤）は入力欄、ほかの職種（設計作図＝野内）は表示だけ。会議は主担当者
   if(!row(kikaku).querySelector('.rc-plan-start input[type=date]')) throw new Error('担当者のボックスに入力欄が無い');
   if(row(sakuzu).querySelector('.rc-plan input')) throw new Error('担当でないボックスに入力欄がある');
-  if(!row(kaigi).querySelector('.rc-plan-end input')) throw new Error('会議のボックスを主担当者が入力できない');
+  // 会議・打合せは表では入力しない（0.9.0。「📅 会議・打合せ予定」の画面で入力する）
+  if(row(kaigi).querySelector('.rc-plan input')) throw new Error('表に会議の入力欄がある');
   const inS = row(kikaku).querySelector('.rc-plan-start input'), inE = row(kikaku).querySelector('.rc-plan-end input');
   inS.value='2026-12-01'; inS.dispatchEvent(new wv.Event('change'));
   inE.value='2026-11-20'; inE.dispatchEvent(new wv.Event('change'));
@@ -718,16 +719,34 @@ run('開始予定・完了予定：担当者だけが入力でき、保存・取
   wv.setCurUser('野内　早紀'); wv.render();
   if(row(kikaku).querySelector('.rc-plan input') || row(kikaku).querySelector('.rc-plan-start').textContent!=='12/01') throw new Error('担当でない人に入力欄が出る／表示が違う');
   if(!row(sakuzu).querySelector('.rc-plan-start input')) throw new Error('設計作図の担当者に入力欄が出ない');
-  // 会議・打合せは、主担当者でなくても入力できる（0.6.4）
+  // 会議・打合せ予定の画面（0.9.0）：だれでも、主担当者が未設定の物件でも入力できる
+  wv.eval('props[0].tanto=""');
   const uchi = wv.eval('TASKS.find(t=>t.category==="打合せ").no');
-  if(!row(kaigi).querySelector('.rc-plan-start input') || !row(uchi).querySelector('.rc-plan-end input')) throw new Error('会議・打合せを主担当者以外が入力できない');
-  wv.setPlan(pid, kaigi, 'start', {value:'2026-12-03', classList:{toggle(){}}});
-  if(wv.eval('pStates['+pid+'].planStart['+kaigi+']')!=='2026-12-03') throw new Error('主担当者以外が会議の予定を入れられない');
-  // 主担当者が未設定の物件でも入力できる
-  wv.eval('props[0].tanto=""'); wv.render();
-  if(!row(kaigi).querySelector('.rc-plan-end input')) throw new Error('主担当者が未設定の物件で会議の予定を入力できない');
+  wv.document.getElementById('meetPlanBtn').click();
+  const dlg = wv.document.getElementById('meetPlanOv');
+  if(!dlg.classList.contains('open')) throw new Error('会議・打合せ予定の画面が開かない');
+  const mrows = [...dlg.querySelectorAll('.meet-row')];
+  const nMeet = wv.eval('TASKS.filter(t=>["会議","打合せ"].includes(t.category)).length');
+  if(mrows.length!==nMeet) throw new Error('会議・打合せのボックスの数 '+mrows.length+'/'+nMeet);
+  const mIn = (no,kind) => dlg.querySelector('.meet-row[data-no="'+no+'"] .meet-in[data-kind="'+kind+'"]');
+  // 開始より前の完了予定は保存しない
+  let al=''; wv.alert = m=>{ al=m; };
+  mIn(kaigi,'start').value='2026-12-10'; mIn(kaigi,'end').value='2026-12-03';
+  wv.saveMeetPlan();
+  if(!al || !dlg.classList.contains('open') || wv.eval('pStates['+pid+'].planStart['+kaigi+']')) throw new Error('開始より前の完了予定が保存された');
+  mIn(kaigi,'start').value='2026-12-03'; mIn(kaigi,'end').value='2026-12-04'; mIn(uchi,'end').value='2026-12-20';
+  wv.saveMeetPlan();
+  if(dlg.classList.contains('open')) throw new Error('保存しても閉じない');
+  if(wv.eval('pStates['+pid+'].planStart['+kaigi+']')!=='2026-12-03' || wv.eval('pStates['+pid+'].planEnd['+kaigi+']')!=='2026-12-04' || wv.eval('pStates['+pid+'].planEnd['+uchi+']')!=='2026-12-20') throw new Error('会議・打合せの予定が保存されない');
+  if(row(kaigi).querySelector('.rc-plan-start').textContent!=='12/03') throw new Error('表に会議の予定が出ない '+row(kaigi).querySelector('.rc-plan-start').textContent);
+  // 空にすると消える。完了したボックスは表示だけ
+  wv.eval('pStates['+pid+'].ts['+uchi+']="完了"');
+  wv.openMeetPlanDlg();
+  if(mIn(uchi,'end') || !dlg.querySelector('.meet-row[data-no="'+uchi+'"]').textContent.includes('12/20')) throw new Error('完了したボックスに入力欄が出る');
+  mIn(kaigi,'end').value=''; wv.saveMeetPlan();
+  if(wv.eval('pStates['+pid+'].planEnd['+kaigi+']') || wv.eval('pStates['+pid+'].planEnd['+uchi+']')!=='2026-12-20') throw new Error('空にした予定が消えない／完了したボックスの予定が消えた');
+  wv.eval('pStates['+pid+'].ts['+uchi+']="着手前"; props[0].tanto="江藤　奨"'); wv.render();
   if(row(sakuzu).querySelector('.rc-plan-start input')===null) throw new Error('（確認）設計作図の担当者の入力欄');
-  wv.eval('props[0].tanto="江藤　奨"'); wv.render();
   // 保存して開き直しても残る
   wv.saveData();
   const saved = wv.localStorage.getItem('housing_roadmap_v7');

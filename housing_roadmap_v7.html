@@ -272,6 +272,19 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
 
 /* ===== ゲート設定 ===== */
 .gate-dialog-inner{max-width:480px}
+.meet-dialog-inner{max-width:560px;max-height:85vh;overflow-y:auto}
+.meet-head,.meet-row{display:grid;grid-template-columns:40px 1fr 130px 130px;gap:8px;align-items:center}
+.meet-head{font-size:12px;color:var(--color-text-secondary,#666);padding:4px 0;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5)}
+.meet-row{padding:6px 0;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5);font-size:14px}
+.meet-row:last-child{border-bottom:none}
+.meet-row .meet-no{font-size:12px;color:var(--color-text-tertiary,#999)}
+.meet-row.meet-done{color:var(--color-text-tertiary,#999)}
+.meet-row .meet-val{font-size:13px}
+.meet-group{font-size:12px;font-weight:600;color:var(--color-text-secondary,#666);margin-top:10px;padding:2px 0}
+.meet-row>span{min-width:0}
+.meet-in{box-sizing:border-box;min-width:0;font-size:13px;padding:4px 6px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:6px;background:var(--color-background-primary,#fff);color:inherit;width:100%;font-family:inherit}
+.meet-in.bad{border-color:#E24B4A;background:#FDECEC}
+@media (max-width:600px){.meet-head{display:none}.meet-row{grid-template-columns:32px 1fr 1fr;row-gap:4px}.meet-row .meet-name{grid-column:2/4}.meet-row .meet-s{grid-column:2}.meet-row .meet-e{grid-column:3}.meet-s::before,.meet-e::before{display:block;font-size:11px;color:var(--color-text-secondary,#666)}.meet-s::before{content:"開始予定"}.meet-e::before{content:"完了予定"}}
 .gate-row{display:grid;grid-template-columns:130px 1fr;gap:8px;align-items:center;padding:7px 0;border-bottom:.5px solid var(--color-border-tertiary,#e5e5e5)}
 .gate-row:last-of-type{border-bottom:none}
 .gate-name{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
@@ -541,7 +554,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
   <div class="list-hdr">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="list-title">🏠 ホーム</div>
-      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.8.7（2026-11-27）</span>
+      <span id="appVersion" style="font-size:11px;color:var(--color-text-tertiary,#999)">v0.9.0（2026-11-27）</span>
       <span id="curUserWrap" style="display:none;align-items:center;gap:6px;font-size:13px;margin-left:6px;padding:3px 4px 3px 10px;border:.5px solid var(--color-border-secondary,#d0d0d0);border-radius:20px">👤 <b id="curUserLabel"></b><button class="admin-btn" style="border-radius:14px" onclick="openUserPick()">切替</button></span>
     </div>
     <div class="list-actions" style="display:flex;gap:8px;align-items:center">
@@ -620,6 +633,7 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap">
           <span class="rm-tanto-link" onclick="openTantoDlg()">👤 担当者設定</span>
           <span class="rm-tanto-link" id="gateLinkBtn" onclick="openGateDlg()">🚩 ゲート（基準日）設定</span>
+          <span class="rm-tanto-link" id="meetPlanBtn" onclick="openMeetPlanDlg()">📅 会議・打合せ予定</span>
         </div>
       </div>
     </div>
@@ -727,6 +741,20 @@ textarea.dialog-textarea:focus{outline:none;border-color:#E24B4A}
       <span style="font-size:12px;color:var(--color-text-secondary,#666);align-self:center">最終ステップ</span>
       <button class="btn btn-cancel" onclick="skipGateAndFinish()">スキップして完了</button>
       <button class="btn btn-primary" onclick="saveGateAndFinish()">保存して完了</button>
+    </div>
+  </div>
+</div>
+
+<!-- 会議・打合せ予定（物件ごと。会議・打合せのボックスの開始予定・完了予定をまとめて入力。0.9.0） -->
+<div class="overlay" id="meetPlanOv">
+  <div class="dialog meet-dialog-inner">
+    <div class="dialog-title">📅 会議・打合せ予定</div>
+    <div class="dialog-sub" id="meetPlanSub"></div>
+    <div class="meet-head"><span>No</span><span>ボックス</span><span>開始予定</span><span>完了予定</span></div>
+    <div id="meetPlanRows"></div>
+    <div class="dialog-actions">
+      <button class="btn btn-cancel" onclick="closeOv('meetPlanOv')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveMeetPlan()">保存</button>
     </div>
   </div>
 </div>
@@ -1476,7 +1504,52 @@ function boxTantoOf(pid,t){
 }
 // 会議・打合せの予定は、当面だれでも入力できる（利用者の指示 2026-11-26。主担当者が未設定の物件で入れる人がいなかったため）
 function isMeetingBox(t){ return ['会議','打合せ'].includes(t.category); }
-function canEditPlan(pid,t){ if(isMeetingBox(t)) return !!curUser; const tn=boxTantoOf(pid,t); return !!(curUser && tn && tn===curUser); }
+// 会議・打合せは、表では入力させず「📅 会議・打合せ予定」の画面でだれでも入力する（0.9.0、利用者の指示）
+function canEditPlan(pid,t){ if(isMeetingBox(t)) return false; const tn=boxTantoOf(pid,t); return !!(curUser && tn && tn===curUser); }
+function openMeetPlanDlg(){
+  const p=props.find(x=>x.id===curPid); if(!p) return;
+  if(!pStates[curPid]) initPState(curPid);
+  const st=pStates[curPid];
+  document.getElementById('meetPlanSub').textContent=p.name+' の会議・打合せのボックス。完了したボックスは表示だけです';
+  let lastGroup='';
+  document.getElementById('meetPlanRows').innerHTML=TASKS.filter(isMeetingBox).map(t=>{
+    const done=st.ts&&st.ts[t.no]==='完了';
+    const s1=planOf(curPid,t.no,'start'), s2=planOf(curPid,t.no,'end');
+    const g=t.group!==lastGroup?'<div class="meet-group">'+(t.group||'')+'</div>':''; lastGroup=t.group;
+    const cell=(kind,v)=>done
+      ? '<span class="meet-val">'+(v?v.slice(5).replace('-','/'):'―')+'</span>'
+      : '<input type="date" class="meet-in" data-no="'+t.no+'" data-kind="'+kind+'" value="'+v+'">';
+    return g+'<div class="meet-row'+(done?' meet-done':'')+'" data-no="'+t.no+'">'
+      +'<span class="meet-no">'+t.no+'</span>'
+      +'<span class="meet-name">'+t.name+(done?'（完了）':'')+'</span>'
+      +'<span class="meet-s">'+cell('start',s1)+'</span><span class="meet-e">'+cell('end',s2)+'</span></div>';
+  }).join('');
+  openOv('meetPlanOv');
+}
+function saveMeetPlan(){
+  const st=pStates[curPid]; if(!st) return;
+  if(!st.planStart) st.planStart={}; if(!st.planEnd) st.planEnd={};
+  const rows=[...document.querySelectorAll('#meetPlanRows .meet-row')];
+  let bad=null;
+  rows.forEach(r=>{
+    const a=r.querySelector('.meet-in[data-kind="start"]'), b=r.querySelector('.meet-in[data-kind="end"]');
+    if(!a||!b) return;
+    const ng=a.value&&b.value&&a.value>b.value;
+    a.classList.toggle('bad',ng); b.classList.toggle('bad',ng);
+    if(ng&&!bad) bad=r;
+  });
+  if(bad){ alert('完了予定は開始予定より後の日付にしてください（赤い欄）。'); bad.scrollIntoView&&bad.scrollIntoView({block:'center'}); return; }
+  rows.forEach(r=>{
+    const no=Number(r.dataset.no);
+    r.querySelectorAll('.meet-in').forEach(el=>{
+      const m=el.dataset.kind==='start'?st.planStart:st.planEnd;
+      if(el.value) m[no]=el.value; else delete m[no];
+    });
+  });
+  closeOv('meetPlanOv');
+  render();
+  scheduleSave();
+}
 function planOf(pid,no,kind){ const st=pStates[pid]; const m=st&&(kind==='start'?st.planStart:st.planEnd); return (m&&m[no])||''; }
 function planCell(pid,t,kind){
   const v=planOf(pid,t.no,kind), cls='rc-plan rc-plan-'+kind;
@@ -1491,7 +1564,7 @@ function planCell(pid,t,kind){
 }
 function setPlan(pid,no,kind,el){
   const t=TASKS.find(x=>x.no===no);
-  if(!t||!canEditPlan(pid,t)||(pStates[pid].ts&&pStates[pid].ts[no]==='完了')){ alert('開始予定・完了予定を入力できるのは、このボックスの担当者だけです（会議・打合せはだれでも入力できます）。'); el.value=planOf(pid,no,kind); return; }
+  if(!t||!canEditPlan(pid,t)||(pStates[pid].ts&&pStates[pid].ts[no]==='完了')){ alert('開始予定・完了予定を入力できるのは、このボックスの担当者だけです（会議・打合せは「📅 会議・打合せ予定」から入力します）。'); el.value=planOf(pid,no,kind); return; }
   const st=pStates[pid]; if(!st.planStart) st.planStart={}; if(!st.planEnd) st.planEnd={};
   const v=el.value||'';
   const other=kind==='start'?st.planEnd[no]:st.planStart[no];
@@ -2047,12 +2120,12 @@ function openMySoon(user){ openMyDueList('soon', user); }
 
 // ===== イベント =====
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
-['helpMemoOv','helpListOv','overdueOv','tantoDlgOv','addPropOv','gateDlgOv','staffDlgOv','taskEditDlgOv','linkAddOv'].forEach(id=>{
+['helpMemoOv','helpListOv','overdueOv','tantoDlgOv','addPropOv','gateDlgOv','meetPlanOv','staffDlgOv','taskEditDlgOv','linkAddOv'].forEach(id=>{
   document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)closeOv(id);});
 });
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
-  ['helpMemoOv','tantoDlgOv','helpListOv','overdueOv','addPropOv','gateDlgOv','staffDlgOv','taskEditDlgOv','linkAddOv'].forEach(id=>{
+  ['helpMemoOv','tantoDlgOv','helpListOv','overdueOv','addPropOv','gateDlgOv','meetPlanOv','staffDlgOv','taskEditDlgOv','linkAddOv'].forEach(id=>{
     if(document.getElementById(id).classList.contains('open'))closeOv(id);
   });
   if(document.getElementById('modalBg').classList.contains('open'))closeModal();
@@ -2541,7 +2614,7 @@ function deleteProp(pid){
 }
 
 // アプリの版（セマンティックバージョン）。変えたら #appVersion の表示と package.json・CHANGELOG.md も揃える
-const APP_VERSION = '0.8.7';
+const APP_VERSION = '0.9.0';
 // スタッフ一覧から外した人。保存データ（staffVer が古いもの）からも一度だけ外す。外す人が増えたら STAFF_VER を上げて追記する
 // STAFF_ALIAS：同じ人の別名。一覧から外し、担当者設定は正式名に置き換える
 const STAFF_VER = 3; // 3：登録スタッフ（DEFAULT_STAFF）の欠けを補う
